@@ -232,6 +232,20 @@ export async function onRequest(context) {
       if (settings.repository_size_threshold) {
         const thresholdBytes = parseInt(settings.repository_size_threshold);
         const maxThresholdBytes = 1024 * 1024 * 1024; // 1GB
+        const minThresholdBytes = 10 * 1024 * 1024; // 10MB
+        
+        if (thresholdBytes < minThresholdBytes) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: '仓库大小阈值不能小于10MB'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
         
         if (thresholdBytes > maxThresholdBytes) {
           return new Response(JSON.stringify({
