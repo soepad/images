@@ -50,34 +50,6 @@ async function checkAdminAuth(request, env) {
 }
 
 /**
- * 获取仓库大小
- * @param {Object} env - 环境变量
- * @param {string} owner - 仓库所有者
- * @param {string} repo - 仓库名称
- * @param {string} token - GitHub令牌
- * @returns {Promise<number>} - 仓库大小（字节）
- */
-async function getRepositorySize(env, owner, repo, token) {
-  try {
-    const octokit = new Octokit({
-      auth: token || env.GITHUB_TOKEN
-    });
-    
-    // 获取仓库信息
-    const repoInfo = await octokit.rest.repos.get({
-      owner,
-      repo
-    });
-    
-    // 返回仓库大小（KB转换为字节）
-    return repoInfo.data.size * 1024;
-  } catch (error) {
-    console.error(`获取仓库 ${owner}/${repo} 大小失败:`, error);
-    return 0;
-  }
-}
-
-/**
  * 同步仓库大小
  * @param {Object} env - 环境变量
  * @param {number} repoId - 仓库ID
@@ -94,20 +66,26 @@ async function syncRepositorySize(env, repoId) {
       return { success: false, error: '仓库不存在' };
     }
     
-    // 获取实际仓库大小
-    const actualSize = await getRepositorySize(
-      env, 
-      repo.owner, 
-      repo.name, 
-      repo.token || env.GITHUB_TOKEN
-    );
+    // 直接从images表获取实际文件数量和总大小
+    const statsResult = await env.DB.prepare(`
+      SELECT 
+        COUNT(DISTINCT id) as file_count,
+        COALESCE(SUM(size), 0) as total_size
+      FROM images 
+      WHERE repository_id = ?
+    `).bind(repoId).first();
+    
+    const actualSize = statsResult.total_size || 0;
+    const fileCount = statsResult.file_count || 0;
     
     // 更新数据库中的大小估算
     await env.DB.prepare(`
       UPDATE repositories 
-      SET size_estimate = ?, updated_at = CURRENT_TIMESTAMP 
+      SET size_estimate = ?, 
+          file_count = ?,
+          updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
-    `).bind(actualSize, repoId).run();
+    `).bind(actualSize, fileCount, repoId).run();
     
     // 检查是否达到阈值
     const thresholdSetting = await env.DB.prepare(`
@@ -143,6 +121,7 @@ async function syncRepositorySize(env, repoId) {
     return { 
       success: true, 
       size: actualSize,
+      file_count: fileCount,
       threshold: repoSizeThreshold,
       isFull: actualSize >= repoSizeThreshold
     };
