@@ -807,4 +807,24 @@ export async function triggerAllRepositoriesDeployHooks(env) {
       results
     };
   }
+}
+
+/**
+ * 获取仓库大小阈值
+ * @param {Object} env - 环境变量
+ * @returns {Promise<number>} - 返回仓库大小阈值
+ */
+export async function getRepositorySizeThreshold(env) {
+    try {
+        const thresholdSetting = await env.DB.prepare(`
+            SELECT value FROM settings WHERE key = 'repository_size_threshold'
+        `).first();
+        
+        return thresholdSetting ? 
+            parseInt(thresholdSetting.value) : 
+            900 * 1024 * 1024; // 默认900MB
+    } catch (error) {
+        console.error('获取仓库大小阈值失败:', error);
+        throw error;
+    }
 } 
