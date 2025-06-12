@@ -102,7 +102,7 @@
                         <form id="repositorySettingsForm">
                             <div class="mb-3">
                                 <label for="repositorySizeThreshold" class="form-label">仓库大小阈值 (MB)</label>
-                                <input type="number" class="form-control" id="repositorySizeThreshold" name="repository_size_threshold" min="100" max="1000" step="1" placeholder="输入阈值 (MB)">
+                                <input type="number" class="form-control" id="repositorySizeThreshold" name="repository_size_threshold" min="10" max="1000" step="1" placeholder="输入阈值 (MB)">
                                 <div class="form-text">设置仓库大小阈值，达到此阈值后将自动切换到新仓库。建议不超过900MB，最大不能超过1GB。</div>
                             </div>
                             <div class="mb-3">
@@ -367,8 +367,8 @@
                 const nameTemplate = formData.get('repository_name_template');
                 
                 // 验证阈值
-                if (isNaN(thresholdMB) || thresholdMB < 100) {
-                    alert('仓库大小阈值不能小于100MB');
+                if (isNaN(thresholdMB) || thresholdMB < 10) {
+                    alert('仓库大小阈值不能小于10MB');
                     return;
                 }
                 
