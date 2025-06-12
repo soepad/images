@@ -1519,45 +1519,28 @@ export async function onRequest(context) {
           }
 
           // 从GitHub删除图片
-          try {
-            const githubDeleteSuccess = await deleteImageFromGithub(env, image, repositoryInfo);
+          await deleteImageFromGithub(env, image, repositoryInfo);
 
-            if (githubDeleteSuccess) {
-              // 从数据库删除记录
-              await env.DB.prepare('DELETE FROM images WHERE id = ?').bind(imageId).run();
-              console.log('从数据库删除图片成功');
+          // 从数据库中删除图片记录
+          await env.DB.prepare('DELETE FROM images WHERE id = ?').bind(imageId).run();
 
-              // 触发Cloudflare Pages部署钩子
-              const deployResult = await triggerDeployHook(env);
-              if (deployResult.success) {
-                console.log('图片删除后部署已成功触发');
-              } else {
-                console.error('图片删除后部署失败:', deployResult.error);
-              }
-
-              return new Response(JSON.stringify({ 
-                success: true
-              }), {
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...corsHeaders
-                }
-              });
-            }
-          } catch (error) {
-            console.error('删除操作失败:', error);
-            return new Response(JSON.stringify({ 
-              success: false, 
-              error: '删除操作失败', 
-              details: error.message 
-            }), {
-              status: 500,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              }
-            });
+          // 更新仓库大小和文件计数
+          if (image.repository_id) {
+            await env.DB.prepare(`
+              UPDATE repositories 
+              SET size_estimate = size_estimate - ?,
+                  file_count = file_count - 1,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?
+            `).bind(image.size, image.repository_id).run();
           }
+
+          return new Response(JSON.stringify({ success: true }), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
         } else if (request.method === 'GET') {
           // 获取单个图片详情
           const image = await env.DB.prepare('SELECT * FROM images WHERE id = ?').bind(imageId).first();
@@ -1654,104 +1637,98 @@ export async function onRequest(context) {
         
         // 先获取所有要删除的图片信息
         const images = [];
-        const affectedRepositories = new Set(); // 用于跟踪受影响的仓库
-
-        for (const id of imageIds) {
-          try {
-            const image = await env.DB.prepare(`
-              SELECT id, filename, github_path, sha, repository_id, size
-              FROM images 
-              WHERE id = ?
-            `).bind(id).first();
-            
-            if (image) {
-              images.push(image);
-              if (image.repository_id) {
-                affectedRepositories.add(image.repository_id);
-              }
-            } else {
+        const affectedRepositories = new Set();
+        
+        for (const imageId of imageIds) {
+          const image = await env.DB.prepare('SELECT * FROM images WHERE id = ?').bind(imageId).first();
+          if (image) {
+            images.push(image);
+            if (image.repository_id) {
+              affectedRepositories.add(image.repository_id);
+            }
+          }
+        }
+        
+        // 按仓库分组处理图片
+        const repoGroups = new Map();
+        for (const image of images) {
+          if (!image.repository_id) continue;
+          
+          if (!repoGroups.has(image.repository_id)) {
+            repoGroups.set(image.repository_id, []);
+          }
+          repoGroups.get(image.repository_id).push(image);
+        }
+        
+        // 处理每个仓库的图片
+        for (const [repoId, repoImages] of repoGroups) {
+          // 获取仓库信息
+          const repository = await env.DB.prepare(`
+            SELECT * FROM repositories WHERE id = ?
+          `).bind(repoId).first();
+          
+          if (!repository) {
+            console.log(`仓库 ID ${repoId} 不存在，跳过处理`);
+            continue;
+          }
+          
+          const repositoryInfo = {
+            owner: repository.owner || env.GITHUB_OWNER,
+            repo: repository.name,
+            token: repository.token || env.GITHUB_TOKEN
+          };
+          
+          // 计算该仓库中要删除的图片总大小
+          const totalSize = repoImages.reduce((sum, img) => sum + img.size, 0);
+          
+          // 从GitHub删除图片
+          for (const image of repoImages) {
+            try {
+              await deleteImageFromGithub(env, image, repositoryInfo);
+              results.success.push(image.id);
+            } catch (error) {
+              console.error(`删除图片 ${image.id} 失败:`, error);
               results.failed.push({
-                id,
-                error: '图片不存在'
+                id: image.id,
+                error: error.message
               });
             }
-          } catch (error) {
-            console.error(`获取图片 ${id} 信息失败:`, error);
-            results.failed.push({
-              id,
-              error: '获取图片信息失败'
-            });
           }
+          
+          // 从数据库中删除图片记录
+          await env.DB.prepare(`
+            DELETE FROM images 
+            WHERE id IN (${repoImages.map(img => '?').join(',')})
+          `).bind(...repoImages.map(img => img.id)).run();
+          
+          // 更新仓库大小和文件计数
+          await env.DB.prepare(`
+            UPDATE repositories 
+            SET size_estimate = size_estimate - ?,
+                file_count = file_count - ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(totalSize, repoImages.length, repoId).run();
+          
+          // 记录仓库更新
+          results.repositoryUpdates[repoId] = {
+            sizeReduced: totalSize,
+            filesRemoved: repoImages.length
+          };
         }
         
-        // 对每个仓库的认证信息进行缓存
-        const repositoryCache = new Map();
-        
-        console.log('开始批量删除，图片列表:', images.map(img => ({
-          id: img.id,
-          filename: img.filename,
-          repository_id: img.repository_id
-        })));
-        console.log('受影响的仓库:', Array.from(affectedRepositories));
-
-        // 删除图片主循环
-        for (const image of images) {
-          try {
-            // 获取仓库信息
-            let repositoryInfo;
-            
-            if (image.repository_id) {
-              // 检查缓存中是否有该仓库信息
-              if (repositoryCache.has(image.repository_id)) {
-                repositoryInfo = repositoryCache.get(image.repository_id);
-              } else {
-                // 获取仓库信息
-                const repository = await env.DB.prepare(`
-                  SELECT * FROM repositories WHERE id = ?
-                `).bind(image.repository_id).first();
-                
-                if (repository) {
-                  repositoryInfo = {
-                    owner: repository.owner || env.GITHUB_OWNER,
-                    repo: repository.name,
-                    token: repository.token || env.GITHUB_TOKEN,
-                    id: repository.id
-                  };
-                  // 缓存仓库信息
-                  repositoryCache.set(image.repository_id, repositoryInfo);
-                }
-              }
-            }
-            
-            // 如果没有找到对应仓库，使用默认仓库信息
-            if (!repositoryInfo) {
-              repositoryInfo = {
-                owner: env.GITHUB_OWNER,
-                repo: env.GITHUB_REPO,
-                token: env.GITHUB_TOKEN
-              };
-            }
-
-            // 从GitHub删除文件
-            const githubDeleteSuccess = await deleteImageFromGithub(env, image, repositoryInfo);
-            
-            if (githubDeleteSuccess) {
-              // 从数据库删除记录
-              await env.DB.prepare(`
-                DELETE FROM images 
-                WHERE id = ?
-              `).bind(image.id).run();
-              
-              results.success.push(image.id);
-            }
-          } catch (error) {
-            results.failed.push({
-              id: image.id,
-              error: error.message || '删除失败'
-            });
-          }
+        // 处理没有仓库ID的图片
+        const noRepoImages = images.filter(img => !img.repository_id);
+        if (noRepoImages.length > 0) {
+          // 从数据库中删除这些图片记录
+          await env.DB.prepare(`
+            DELETE FROM images 
+            WHERE id IN (${noRepoImages.map(img => '?').join(',')})
+          `).bind(...noRepoImages.map(img => img.id)).run();
+          
+          results.success.push(...noRepoImages.map(img => img.id));
         }
-
+        
         // 如果不是跳过部署，触发部署钩子
         if (!skipDeploy) {
           const deployResult = await triggerDeployHook(env);
