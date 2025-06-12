@@ -417,9 +417,9 @@ export async function checkRepositorySpaceAndAllocate(env, totalUploadSize) {
     // 计算上传后的总大小
     const totalSize = activeRepo.size_estimate + totalUploadSize;
     
-    // 如果上传后总大小超过阈值，创建新仓库
-    if (totalSize > repoSizeThreshold) {
-      console.log(`当前仓库空间不足，创建新仓库: 当前=${activeRepo.size_estimate}, 上传=${totalUploadSize}, 阈值=${repoSizeThreshold}`);
+    // 如果当前仓库大小已经超过阈值，创建新仓库
+    if (activeRepo.size_estimate > repoSizeThreshold) {
+      console.log(`当前仓库已超过阈值，创建新仓库: 当前=${activeRepo.size_estimate}, 阈值=${repoSizeThreshold}`);
       const newRepo = await createNewRepository(env, activeRepo.name);
       
       return {
@@ -429,7 +429,7 @@ export async function checkRepositorySpaceAndAllocate(env, totalUploadSize) {
       };
     }
     
-    // 当前仓库有足够空间，继续使用
+    // 当前仓库未超过阈值，继续使用
     console.log(`使用当前仓库: ${activeRepo.name}, 当前=${activeRepo.size_estimate}, 上传=${totalUploadSize}, 阈值=${repoSizeThreshold}`);
     return {
       canUpload: true,
