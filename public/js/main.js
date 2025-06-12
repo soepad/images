@@ -234,6 +234,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
+    // 检查当前仓库空间
+    async function checkRepositorySpace() {
+        try {
+            const response = await fetch('/api/repository/active');
+            if (!response.ok) {
+                throw new Error('获取仓库信息失败');
+            }
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || '获取仓库信息失败');
+            }
+            return data.data;
+        } catch (error) {
+            console.error('检查仓库空间失败:', error);
+            throw error;
+        }
+    }
+
     // 上传文件 - 使用分块上传
     async function uploadFiles(files) {
         // 再次确认游客上传权限
@@ -242,51 +260,102 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const startTime = Date.now();
-        let uploadedCount = 0;
-        let uploadedBytes = 0;
-        const totalFiles = files.length;
-        const totalBytes = Array.from(files).reduce((total, file) => total + file.size, 0);
-        const uploadedResults = [];
-
-        // 显示进度条并重置
-        const uploadProgress = document.querySelector('.upload-progress');
-        progressBar.style.width = '0%';
-        progressText.textContent = '0%';
-        progressSpeed.textContent = '0 KB/s';
-        uploadProgress.style.display = 'block';
-
-        // 清除现有的上传器
-        activeUploaders.forEach(uploader => {
-            if (uploader.status === 'uploading') {
-                uploader.cancel();
+        try {
+            // 检查当前仓库空间
+            const activeRepo = await checkRepositorySpace();
+            if (!activeRepo) {
+                throw new Error('无法获取当前仓库信息');
             }
-        });
-        activeUploaders = [];
 
-        // 定义文件大小阈值，超过此值使用分块上传，否则使用普通上传
-        const CHUNK_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
+            const startTime = Date.now();
+            let uploadedCount = 0;
+            let uploadedBytes = 0;
+            const totalFiles = files.length;
+            const totalBytes = Array.from(files).reduce((total, file) => total + file.size, 0);
+            const uploadedResults = [];
 
-        // 逐个上传文件
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const isLastFile = i === files.length - 1; // 检查是否是最后一个文件
-            const skipDeploy = !isLastFile; // 除了最后一个文件，其他都跳过部署
-            
-            try {
-                console.log(`开始上传文件: ${file.name}, 大小: ${file.size}, 是否跳过部署: ${skipDeploy}`);
+            // 显示进度条并重置
+            const uploadProgress = document.querySelector('.upload-progress');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            progressSpeed.textContent = '0 KB/s';
+            uploadProgress.style.display = 'block';
+
+            // 滚动到进度条位置
+            uploadProgress.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // 清除现有的上传器
+            activeUploaders.forEach(uploader => {
+                if (uploader.status === 'uploading') {
+                    uploader.cancel();
+                }
+            });
+            activeUploaders = [];
+
+            // 定义文件大小阈值，超过此值使用分块上传，否则使用普通上传
+            const CHUNK_SIZE_THRESHOLD = 5 * 1024 * 1024;
+
+            // 逐个上传文件
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const isLastFile = i === files.length - 1; // 检查是否是最后一个文件
+                const skipDeploy = !isLastFile; // 除了最后一个文件，其他都跳过部署
                 
-                // 判断是否使用分块上传
-                if (file.size > CHUNK_SIZE_THRESHOLD) {
-                    console.log(`文件大小超过${formatFileSize(CHUNK_SIZE_THRESHOLD)}，使用分块上传`);
+                try {
+                    console.log(`开始上传文件: ${file.name}, 大小: ${file.size}, 是否跳过部署: ${skipDeploy}`);
                     
-                    // 创建分块上传器
-                    const uploader = new ChunkedUploader(file, {
-                        skipDeploy: skipDeploy, // 添加skipDeploy参数
-                        // 进度更新回调
-                        onProgress: (progressData) => {
-                            // 计算总体进度 (已上传完成的文件 + 当前文件的进度)
-                            const fileContribution = progressData.uploadedSize / totalBytes;
+                    // 判断是否使用分块上传
+                    if (file.size > CHUNK_SIZE_THRESHOLD) {
+                        console.log(`文件大小超过${formatFileSize(CHUNK_SIZE_THRESHOLD)}，使用分块上传`);
+                        
+                        // 创建分块上传器
+                        const uploader = new ChunkedUploader(file, {
+                            skipDeploy: skipDeploy, // 添加skipDeploy参数
+                            // 进度更新回调
+                            onProgress: (progressData) => {
+                                // 计算总体进度 (已上传完成的文件 + 当前文件的进度)
+                                const fileContribution = progressData.uploadedSize / totalBytes;
+                                const completedContribution = uploadedBytes / totalBytes;
+                                const overallProgress = completedContribution + fileContribution;
+                                const percent = Math.min(100, Math.round(overallProgress * 100));
+                                
+                                // 更新进度条
+                                progressBar.style.width = percent + '%';
+                                progressText.textContent = percent + '%';
+                                
+                                // 计算上传速度
+                                const elapsedSeconds = (Date.now() - startTime) / 1000;
+                                if (elapsedSeconds > 0) {
+                                    const speed = (uploadedBytes + progressData.uploadedSize) / elapsedSeconds;
+                                    progressSpeed.textContent = formatSpeed(speed);
+                                }
+                            },
+                            // 上传完成回调
+                            onComplete: (result) => {
+                                uploadedCount++;
+                                uploadedBytes += file.size;
+                                uploadedResults.push(result.data);
+                                
+                                // 显示所有文件的上传结果
+                                if (uploadedCount === totalFiles) {
+                                    showResult(uploadedResults);
+                                }
+                            },
+                            // 错误处理回调
+                            onError: (error) => {
+                                showToast(error.message || '上传失败');
+                            }
+                        });
+                        
+                        activeUploaders.push(uploader);
+                        uploader.start();
+                    } else {
+                        // 小文件，使用普通上传方式
+                        console.log(`文件大小小于${formatFileSize(CHUNK_SIZE_THRESHOLD)}，使用普通上传`);
+                        
+                        const result = await uploadFileWithXHR(file, (loaded, total) => {
+                            // 计算总体进度
+                            const fileContribution = loaded / totalBytes;
                             const completedContribution = uploadedBytes / totalBytes;
                             const overallProgress = completedContribution + fileContribution;
                             const percent = Math.min(100, Math.round(overallProgress * 100));
@@ -298,76 +367,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                             // 计算上传速度
                             const elapsedSeconds = (Date.now() - startTime) / 1000;
                             if (elapsedSeconds > 0) {
-                                const speed = (uploadedBytes + progressData.uploadedSize) / elapsedSeconds;
+                                const speed = (uploadedBytes + loaded) / elapsedSeconds;
                                 progressSpeed.textContent = formatSpeed(speed);
                             }
-                        },
-                        // 上传完成回调
-                        onComplete: (result) => {
-                            uploadedCount++;
-                            uploadedBytes += file.size;
+                        }, skipDeploy); // 传递skipDeploy参数
+                        
+                        uploadedCount++;
+                        uploadedBytes += file.size;
+                        
+                        if (result.success) {
                             uploadedResults.push(result.data);
                             
-                            // 显示所有文件的上传结果
                             if (uploadedCount === totalFiles) {
                                 showResult(uploadedResults);
                             }
-                        },
-                        // 错误处理回调
-                        onError: (error) => {
-                            showToast(error.message || '上传失败');
+                        } else {
+                            showToast(result.error || '上传失败');
                         }
-                    });
-                    
-                    activeUploaders.push(uploader);
-                    uploader.start();
-                } else {
-                    // 小文件，使用普通上传方式
-                    console.log(`文件大小小于${formatFileSize(CHUNK_SIZE_THRESHOLD)}，使用普通上传`);
-                    
-                    const result = await uploadFileWithXHR(file, (loaded, total) => {
-                        // 计算总体进度
-                        const fileContribution = loaded / totalBytes;
-                        const completedContribution = uploadedBytes / totalBytes;
-                        const overallProgress = completedContribution + fileContribution;
-                        const percent = Math.min(100, Math.round(overallProgress * 100));
-                        
-                        // 更新进度条
-                        progressBar.style.width = percent + '%';
-                        progressText.textContent = percent + '%';
-                        
-                        // 计算上传速度
-                        const elapsedSeconds = (Date.now() - startTime) / 1000;
-                        if (elapsedSeconds > 0) {
-                            const speed = (uploadedBytes + loaded) / elapsedSeconds;
-                            progressSpeed.textContent = formatSpeed(speed);
-                        }
-                    }, skipDeploy); // 传递skipDeploy参数
-                    
-                    uploadedCount++;
-                    uploadedBytes += file.size;
-                    
-                    if (result.success) {
-                        uploadedResults.push(result.data);
-                        
-                        if (uploadedCount === totalFiles) {
-                            showResult(uploadedResults);
-                        }
-                    } else {
-                        showToast(result.error || '上传失败');
                     }
+                    
+                } catch (error) {
+                    showToast(error.message);
                 }
-                
-            } catch (error) {
-                showToast(error.message);
             }
-        }
 
-        // 隐藏文件列表和确认按钮
-        const fileList = document.querySelector('.file-list');
-        const confirmBtn = document.querySelector('.confirm-upload-btn');
-        if (fileList) fileList.remove();
-        if (confirmBtn) confirmBtn.remove();
+            // 隐藏文件列表和确认按钮
+            const fileList = document.querySelector('.file-list');
+            const confirmBtn = document.querySelector('.confirm-upload-btn');
+            if (fileList) fileList.remove();
+            if (confirmBtn) confirmBtn.remove();
+        } catch (error) {
+            showToast(error.message || '上传失败');
+        }
     }
 
     // 使用XMLHttpRequest上传小文件
