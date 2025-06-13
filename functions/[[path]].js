@@ -301,8 +301,7 @@ app.use('*', checkGuestUpload);
 // 处理静态文件
 app.use('/*', serveStatic({ root: './public' }));
 
-// 导出应用
-export default app;
-
 // 导出处理函数
-export const onRequest = app.fetch; 
+export default {
+  fetch: app.fetch
+}; 
