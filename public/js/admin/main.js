@@ -2467,7 +2467,7 @@ async function uploadSelectedFiles(files) {
     progressBar.style.display = 'block';
     
     let totalSize = 0;
-    let uploadedSize = 0;
+    let uploadedBytes = 0;
     let startTime = Date.now();
     
     // 计算总大小
@@ -2477,14 +2477,18 @@ async function uploadSelectedFiles(files) {
     
     // 更新进度条
     function updateProgress(uploaded) {
-        uploadedSize += uploaded;
-        const percent = Math.round((uploadedSize / totalSize) * 100);
+        // 计算总体进度
+        const fileContribution = uploaded / totalSize;
+        const completedContribution = uploadedBytes / totalSize;
+        const overallProgress = completedContribution + fileContribution;
+        const percent = Math.min(100, Math.round(overallProgress * 100));
+        
         progressFill.style.width = `${percent}%`;
         progressText.textContent = `${percent}%`;
         
         // 计算上传速度
         const elapsedTime = (Date.now() - startTime) / 1000; // 转换为秒
-        const speed = uploadedSize / elapsedTime; // 字节/秒
+        const speed = (uploadedBytes + uploaded) / elapsedTime; // 字节/秒
         progressSpeed.textContent = `${formatSize(speed)}/s`;
     }
     
@@ -2503,6 +2507,7 @@ async function uploadSelectedFiles(files) {
                     },
                     onComplete: (result) => {
                         console.log('分块上传完成:', result);
+                        uploadedBytes += file.size;
                     },
                     onError: (error) => {
                         console.error('分块上传失败:', error);
@@ -2517,6 +2522,7 @@ async function uploadSelectedFiles(files) {
                 await uploadFileWithProgress(file, (loaded, total) => {
                     updateProgress(loaded);
                 });
+                uploadedBytes += file.size;
             }
         }
         
