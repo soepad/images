@@ -155,35 +155,6 @@ api.all('/upload', async (c) => {
     }
 });
 
-// 获取当前活跃仓库API
-api.get('/repository/active', async (c) => {
-    const { env } = c;
-    
-    try {
-        const { getActiveRepository } = await import('./api/repository-manager.js');
-        const activeRepo = await getActiveRepository(env);
-        
-        if (!activeRepo) {
-            return c.json({
-                success: false,
-                error: 'No active repository found'
-            }, 404);
-        }
-        
-        return c.json({
-            success: true,
-            data: activeRepo
-        });
-    } catch (error) {
-        console.error('Error getting active repository:', error);
-        return c.json({
-            success: false,
-            error: 'Failed to get active repository',
-            details: error.message
-        }, 500);
-    }
-});
-
 // 全局错误处理
 app.use('*', async (c, next) => {
   try {
