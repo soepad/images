@@ -237,11 +237,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 检查当前仓库空间
     async function checkRepositorySpace() {
         try {
-            const response = await fetch('/api/repositories/active');
+            console.log('开始检查仓库空间...');
+            const url = '/api/repositories/active';
+            console.log('请求URL:', url);
+            
+            const response = await fetch(url);
+            console.log('响应状态:', response.status);
+            console.log('响应头:', Object.fromEntries(response.headers.entries()));
+            
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('错误响应:', errorText);
                 throw new Error('获取仓库信息失败');
             }
+            
             const data = await response.json();
+            console.log('响应数据:', data);
+            
             if (!data.success) {
                 throw new Error(data.error || '获取仓库信息失败');
             }
