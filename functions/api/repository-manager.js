@@ -35,7 +35,7 @@ export async function getActiveRepository(env) {
     // 确保返回所有必要的字段
     return {
       id: activeRepo.id,
-      name: activeRepo.name,
+      repo: activeRepo.name,
       owner: activeRepo.owner || env.GITHUB_OWNER,
       token: activeRepo.token || env.GITHUB_TOKEN,
       deployHook: activeRepo.deploy_hook || env.DEPLOY_HOOK,
