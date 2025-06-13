@@ -104,42 +104,26 @@ api.get('/health', (c) => {
 });
 
 // 仓库管理API
-api.get('/repositories/active', async (c) => {
-    console.log('处理 /repositories/active 请求');
-    const { env } = c;
+api.all('/repositories/*', async (c) => {
+    const { request, env } = c;
+    const { pathname } = new URL(request.url);
+    const repoPath = pathname.replace('/api/repositories', '');
     
     try {
-        const { getActiveRepository } = await import('./api/repository-manager.js');
-        const activeRepo = await getActiveRepository(env);
-        
-        if (!activeRepo) {
-            console.log('没有找到活跃仓库');
-            return c.json({
-                success: false,
-                error: 'No active repository found'
-            }, 404);
-        }
-        
-        console.log('找到活跃仓库:', activeRepo);
-        return c.json({
-            success: true,
-            data: activeRepo
-        });
+        const { onRequest } = await import('./api/repositories.js');
+        return await onRequest({ request, env });
     } catch (error) {
-        console.error('获取活跃仓库失败:', error);
+        console.error('Error processing repositories request:', error);
         return c.json({
             success: false,
-            error: 'Failed to get active repository',
+            error: 'Failed to process repositories request',
             details: error.message
         }, 500);
     }
 });
 
-// 其他仓库管理API
-api.all('/repositories/*', async (c) => {
+api.all('/repositories', async (c) => {
     const { request, env } = c;
-    const { pathname } = new URL(request.url);
-    const repoPath = pathname.replace('/api/repositories', '');
     
     try {
         const { onRequest } = await import('./api/repositories.js');
@@ -171,6 +155,35 @@ api.all('/upload', async (c) => {
     }
 });
 
+// 获取当前活跃仓库API
+api.get('/repository/active', async (c) => {
+    const { env } = c;
+    
+    try {
+        const { getActiveRepository } = await import('./api/repository-manager.js');
+        const activeRepo = await getActiveRepository(env);
+        
+        if (!activeRepo) {
+            return c.json({
+                success: false,
+                error: 'No active repository found'
+            }, 404);
+        }
+        
+        return c.json({
+            success: true,
+            data: activeRepo
+        });
+    } catch (error) {
+        console.error('Error getting active repository:', error);
+        return c.json({
+            success: false,
+            error: 'Failed to get active repository',
+            details: error.message
+        }, 500);
+    }
+});
+
 // 全局错误处理
 app.use('*', async (c, next) => {
   try {
@@ -189,9 +202,6 @@ app.use('*', async (c, next) => {
   console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path}`);
   await next();
 });
-
-// 挂载API路由
-app.route('/api', api);
 
 // 会话管理中间件
 async function sessionMiddleware(c, next) {
@@ -298,10 +308,11 @@ app.use('*', sessionMiddleware);
 app.use('*', checkUploadSecurity);
 app.use('*', checkGuestUpload);
 
+// 先挂载 API 路由
+app.route('/api', api);
+
 // 处理静态文件
 app.use('/*', serveStatic({ root: './public' }));
 
 // 导出处理函数
-export default {
-  fetch: app.fetch
-}; 
+export default app; 
