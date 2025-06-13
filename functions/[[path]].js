@@ -187,6 +187,9 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// 挂载API路由
+app.route('/api', api);
+
 // 会话管理中间件
 async function sessionMiddleware(c, next) {
   const sessionId = getCookie(c, 'session_id');
@@ -291,9 +294,6 @@ async function checkUploadSecurity(c, next) {
 app.use('*', sessionMiddleware);
 app.use('*', checkUploadSecurity);
 app.use('*', checkGuestUpload);
-
-// 先挂载 API 路由
-app.route('/api', api);
 
 // 处理静态文件
 app.use('/*', serveStatic({ root: './public' }));
