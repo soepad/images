@@ -9,79 +9,45 @@ import { updateReposVariable } from './cf-manager';
  */
 export async function getActiveRepository(env) {
   try {
-    // 查询数据库中的活跃仓库
-    const repo = await env.DB.prepare(`
-      SELECT * FROM repositories 
+    const activeRepo = await env.DB.prepare(`
+      SELECT 
+        id,
+        name,
+        owner,
+        token,
+        deploy_hook,
+        size_estimate,
+        file_count,
+        status,
+        priority,
+        created_at,
+        updated_at
+      FROM repositories 
       WHERE status = 'active' 
       ORDER BY priority ASC, id ASC 
       LIMIT 1
     `).first();
     
-    // 如果没有找到活跃仓库
-    if (!repo) {
-      console.log('没有找到活跃仓库，尝试创建默认仓库');
-      
-      // 检查是否有环境变量定义的仓库信息
-      if (env.GITHUB_REPO && env.GITHUB_OWNER) {
-        // 创建默认仓库记录
-        await env.DB.prepare(`
-          INSERT INTO repositories (name, owner, status, is_default, priority)
-          VALUES (?, ?, 'active', 1, 0)
-        `).bind(env.GITHUB_REPO, env.GITHUB_OWNER).run();
-        
-        // 更新设置
-        await env.DB.prepare(`
-          INSERT OR REPLACE INTO settings (key, value, updated_at)
-          VALUES ('initial_repository_name', ?, CURRENT_TIMESTAMP)
-        `).bind(env.GITHUB_REPO).run();
-        
-        await env.DB.prepare(`
-          INSERT OR REPLACE INTO settings (key, value, updated_at)
-          VALUES ('initial_repository_owner', ?, CURRENT_TIMESTAMP)
-        `).bind(env.GITHUB_OWNER).run();
-        
-        // 重新查询
-        const newRepo = await env.DB.prepare(`
-          SELECT * FROM repositories 
-          WHERE name = ? AND owner = ?
-        `).bind(env.GITHUB_REPO, env.GITHUB_OWNER).first();
-        
-        if (newRepo) {
-          return {
-            id: newRepo.id,
-            owner: newRepo.owner,
-            repo: newRepo.name,
-            token: newRepo.token || env.GITHUB_TOKEN,
-            deployHook: newRepo.deploy_hook || env.DEPLOY_HOOK
-          };
-        }
-      }
-      
-      throw new Error('没有可用的活跃仓库，且无法创建默认仓库');
+    if (!activeRepo) {
+      return null;
     }
-    
-    // 返回仓库信息
+
+    // 确保返回所有必要的字段
     return {
-      id: repo.id,
-      owner: repo.owner || env.GITHUB_OWNER,
-      repo: repo.name,
-      token: repo.token || env.GITHUB_TOKEN,
-      deployHook: repo.deploy_hook || env.DEPLOY_HOOK
+      id: activeRepo.id,
+      name: activeRepo.name,
+      owner: activeRepo.owner || env.GITHUB_OWNER,
+      token: activeRepo.token || env.GITHUB_TOKEN,
+      deployHook: activeRepo.deploy_hook || env.DEPLOY_HOOK,
+      sizeEstimate: activeRepo.size_estimate,
+      fileCount: activeRepo.file_count,
+      status: activeRepo.status,
+      priority: activeRepo.priority,
+      createdAt: activeRepo.created_at,
+      updatedAt: activeRepo.updated_at
     };
   } catch (error) {
     console.error('获取活跃仓库失败:', error);
-    
-    // 回退到环境变量
-    if (env.GITHUB_REPO && env.GITHUB_OWNER) {
-      return {
-        id: null,
-        owner: env.GITHUB_OWNER,
-        repo: env.GITHUB_REPO,
-        token: env.GITHUB_TOKEN,
-        deployHook: env.DEPLOY_HOOK
-      };
-    }
-    
     throw error;
   }
 }
