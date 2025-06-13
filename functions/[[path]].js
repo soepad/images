@@ -104,37 +104,48 @@ api.get('/health', (c) => {
 });
 
 // 仓库管理API
-api.get('/repository/*', async (c) => {
+api.get('/repositories/active', async (c) => {
     const { env } = c;
-    const path = c.req.path;
     
     try {
-        if (path === '/repository/active') {
-            const { getActiveRepository } = await import('./api/repository-manager.js');
-            const activeRepo = await getActiveRepository(env);
-            
-            if (!activeRepo) {
-                return c.json({
-                    success: false,
-                    error: 'No active repository found'
-                }, 404);
-            }
-            
+        const { getActiveRepository } = await import('./api/repository-manager.js');
+        const activeRepo = await getActiveRepository(env);
+        
+        if (!activeRepo) {
             return c.json({
-                success: true,
-                data: activeRepo
-            });
+                success: false,
+                error: 'No active repository found'
+            }, 404);
         }
         
         return c.json({
-            success: false,
-            error: 'Invalid repository endpoint'
-        }, 404);
+            success: true,
+            data: activeRepo
+        });
     } catch (error) {
-        console.error('Error processing repository request:', error);
+        console.error('Error getting active repository:', error);
         return c.json({
             success: false,
-            error: 'Failed to process repository request',
+            error: 'Failed to get active repository',
+            details: error.message
+        }, 500);
+    }
+});
+
+// 其他仓库管理API
+api.all('/repositories/*', async (c) => {
+    const { request, env } = c;
+    const { pathname } = new URL(request.url);
+    const repoPath = pathname.replace('/api/repositories', '');
+    
+    try {
+        const { onRequest } = await import('./api/repositories.js');
+        return await onRequest({ request, env });
+    } catch (error) {
+        console.error('Error processing repositories request:', error);
+        return c.json({
+            success: false,
+            error: 'Failed to process repositories request',
             details: error.message
         }, 500);
     }
