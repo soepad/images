@@ -105,6 +105,7 @@ api.get('/health', (c) => {
 
 // 仓库管理API
 api.get('/repositories/active', async (c) => {
+    console.log('处理 /repositories/active 请求');
     const { env } = c;
     
     try {
@@ -112,18 +113,20 @@ api.get('/repositories/active', async (c) => {
         const activeRepo = await getActiveRepository(env);
         
         if (!activeRepo) {
+            console.log('没有找到活跃仓库');
             return c.json({
                 success: false,
                 error: 'No active repository found'
             }, 404);
         }
         
+        console.log('找到活跃仓库:', activeRepo);
         return c.json({
             success: true,
             data: activeRepo
         });
     } catch (error) {
-        console.error('Error getting active repository:', error);
+        console.error('获取活跃仓库失败:', error);
         return c.json({
             success: false,
             error: 'Failed to get active repository',
