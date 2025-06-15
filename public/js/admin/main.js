@@ -2543,6 +2543,13 @@ async function uploadSelectedFiles(files) {
         }
         
         showNotification('文件上传成功', 'success');
+        
+        // 关闭模态框
+        const modal = document.getElementById('uploadModal');
+        if (modal) {
+            modal.style.display = 'none';
+            resetUploadState(); // 重置上传状态
+        }
     } catch (error) {
         console.error('上传文件失败:', error);
         showNotification('上传文件失败: ' + error.message, 'error');
