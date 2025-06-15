@@ -197,8 +197,8 @@ export async function onRequest(context) {
       // 使用原始文件名
       const fileName = file.name;
       
-      // 构建完整路径：public/images/年/月/日/文件名
-      const filePath = `public/images/${datePath}/${fileName}`;
+      // 构建完整路径：public/年/月/日/文件名
+      const filePath = `public/${datePath}/${fileName}`;
       
       console.log(`后台直接上传文件到GitHub仓库 ${repository.repo}: ${filePath}`);
       
@@ -338,7 +338,7 @@ export async function onRequest(context) {
       }
       
       // 返回链接信息
-      const imageUrl = `${env.SITE_URL}/images/${datePath}/${fileName}`;
+      const imageUrl = `${env.SITE_URL}/${datePath}/${fileName}`;
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -713,7 +713,7 @@ export async function onRequest(context) {
         uploadFileName = `${uploadFileName}.${extension}`;
       }
       
-      const filePath = `public/images/${datePath}/${uploadFileName}`;
+      const filePath = `public/${datePath}/${uploadFileName}`;
       
       // 检查文件是否已存在
       try {
@@ -839,7 +839,7 @@ export async function onRequest(context) {
         }
         
         // 构建图片URL
-        const imageUrl = `${env.SITE_URL}/images/${datePath}/${uploadFileName}`;
+        const imageUrl = `${env.SITE_URL}/${datePath}/${uploadFileName}`;
         
         return new Response(JSON.stringify({
           success: true,
