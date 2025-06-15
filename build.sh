@@ -31,8 +31,8 @@ fi
 TEMP_DIR="./temp_repos"
 mkdir -p $TEMP_DIR
 
-# 确保public/images目录存在
-mkdir -p ./public/images
+# 确保public目录存在
+mkdir -p ./public
 
 echo -e "${GREEN}准备处理图片仓库...${NC}"
 
@@ -114,12 +114,12 @@ for REPO in $REPO_LIST; do
     continue
   fi
   
-  # 检查public/images目录是否存在
-  if [ -d "$TEMP_DIR/$REPO/public/images" ]; then
+  # 检查public目录是否存在
+  if [ -d "$TEMP_DIR/$REPO/public" ]; then
     echo -e "${GREEN}找到图片目录，正在复制内容...${NC}"
     
     # 复制图片内容到主项目
-    cp -r $TEMP_DIR/$REPO/public/images/* ./public/images/ 2>/dev/null || true
+    cp -r $TEMP_DIR/$REPO/public/* ./public/ 2>/dev/null || true
     
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}成功复制 $REPO 中的图片内容${NC}"
@@ -128,10 +128,10 @@ for REPO in $REPO_LIST; do
     fi
     
     # 统计此仓库中的图片数量
-    REPO_IMAGE_COUNT=$(find $TEMP_DIR/$REPO/public/images -type f | wc -l)
+    REPO_IMAGE_COUNT=$(find $TEMP_DIR/$REPO/public -type f | wc -l)
     echo -e "${GREEN}仓库 $REPO 中包含 $REPO_IMAGE_COUNT 个图片文件${NC}"
   else
-    echo -e "${YELLOW}仓库 $REPO 中没有找到 public/images 目录，跳过${NC}"
+    echo -e "${YELLOW}仓库 $REPO 中没有找到 public 目录，跳过${NC}"
   fi
   
   # 清理临时目录，减少磁盘空间使用
@@ -139,7 +139,7 @@ for REPO in $REPO_LIST; do
 done
 
 # 显示合并后的图片统计信息
-IMAGE_COUNT=$(find ./public/images -type f | wc -l)
+IMAGE_COUNT=$(find ./public -type f | wc -l)
 echo -e "${BLUE}----------------------------------------${NC}"
 echo -e "${GREEN}图片合并完成，共计 $IMAGE_COUNT 个文件${NC}"
 
