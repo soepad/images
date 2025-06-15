@@ -602,7 +602,7 @@ export async function onRequest(context) {
         const datePath = `${year}/${month}/${day}`;
         
         // 构建文件存储路径
-        const filePath = `public/images/${datePath}/${file.name}`;
+        const filePath = `public/${datePath}/${file.name}`;
         
         console.log('构建的文件存储路径:', filePath);
         
@@ -714,7 +714,7 @@ export async function onRequest(context) {
           console.log('数据库保存成功');
 
           // 返回各种格式的链接 - 使用包含年月日的完整路径
-          const imageUrl = `${env.SITE_URL}/images/${datePath}/${file.name}`;
+          const imageUrl = `${env.SITE_URL}/${datePath}/${file.name}`;
           console.log('返回图片链接:', imageUrl);
           
           // 对URL进行编码处理，解决Markdown中特殊字符的问题
@@ -1337,12 +1337,12 @@ export async function onRequest(context) {
           // 处理结果
           const formattedImages = images.map(img => {
             // 从github_path提取图片的相对路径
-            const relativePath = img.github_path.replace('public/images/', '');
+            const relativePath = img.github_path.replace('public/', '');
             
             return {
               id: img.id,
               name: img.filename,
-              url: `${env.SITE_URL}/images/${relativePath}`,
+              url: `${env.SITE_URL}/${relativePath}`,
               size: img.size,
               type: img.mime_type,
               views: img.views || 0,
@@ -1556,13 +1556,13 @@ export async function onRequest(context) {
           }
 
           // 从github_path提取图片的相对路径
-          // github_path格式如: public/images/2023/06/01/example.jpg
-          const relativePath = image.github_path.replace('public/images/', '');
+          // github_path格式如: public/2023/06/01/example.jpg
+          const relativePath = image.github_path.replace('public/', '');
 
           return new Response(JSON.stringify({
             id: image.id,
             name: image.filename,
-            url: `${env.SITE_URL}/images/${relativePath}`,
+            url: `${env.SITE_URL}/${relativePath}`,
             size: image.size,
             type: image.mime_type,
             views: image.views || 0,
