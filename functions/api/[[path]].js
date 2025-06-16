@@ -337,37 +337,25 @@ export async function onRequest(context) {
           });
         }
         
-        // 验证密码
-        console.log('开始验证密码...');
-        
-        // 特殊硬编码处理，用于调试 - 如果是管理员使用特定密码
+        // 验证当前密码是否正确
         let isValid = false;
-        
-        if (username === 'admin' && password === 'admin123') {
-          console.log('使用硬编码验证 admin/admin123');
-          isValid = true;
-        } else {
-          // 使用bcrypt比较密码
-          try {
-            console.log('使用bcrypt比较密码...');
+        try {
+            console.log('验证当前密码');
             isValid = await bcrypt.compare(password, user.password);
-            console.log('bcrypt比较结果:', isValid ? '密码正确' : '密码错误');
-          } catch (bcryptError) {
-            console.error('bcrypt比较出错:', bcryptError);
-            // 如果bcrypt比较失败，则尝试直接比较（仅用于调试）
+        } catch (error) {
+            console.error('密码验证出错:', error);
             isValid = false;
-          }
         }
         
         if (!isValid) {
-          console.log('密码验证失败');
-          return new Response(JSON.stringify({ error: '用户名或密码错误' }), {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
+            console.log('当前密码验证失败');
+            return new Response(JSON.stringify({ error: '当前密码不正确' }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
         }
         
         console.log('密码验证成功，开始创建会话...');
@@ -1112,28 +1100,23 @@ export async function onRequest(context) {
         
         // 验证当前密码是否正确
         let isValid = false;
-        if (user.username === 'admin' && currentPassword === 'admin123') {
-          console.log('使用硬编码验证 admin/admin123');
-          isValid = true;
-        } else {
-          try {
+        try {
             console.log('验证当前密码');
             isValid = await bcrypt.compare(currentPassword, user.password);
-          } catch (error) {
+        } catch (error) {
             console.error('密码验证出错:', error);
             isValid = false;
-          }
         }
         
         if (!isValid) {
-          console.log('当前密码验证失败');
-          return new Response(JSON.stringify({ error: '当前密码不正确' }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
+            console.log('当前密码验证失败');
+            return new Response(JSON.stringify({ error: '当前密码不正确' }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
         }
         
         // 对新密码进行哈希处理
