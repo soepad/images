@@ -268,12 +268,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 errorMessage.textContent = data.error || '登录失败';
                 errorMessage.style.display = 'block';
                 
-                // 提醒用户正确的默认密码
-                if (data.error === '用户名或密码错误' && username === 'admin') {
-                    console.log('提示：默认管理员密码是 admin123');
-                    errorMessage.textContent += '，默认管理员密码是 admin123';
-                }
-                
                 // 如果启用了 reCAPTCHA，重置验证
                 if (recaptchaEnabled && recaptchaId !== null && window.grecaptcha) {
                     try {
