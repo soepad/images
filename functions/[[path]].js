@@ -109,6 +109,13 @@ api.all('/repositories/*', async (c) => {
     const { pathname } = new URL(request.url);
     const repoPath = pathname.replace('/api/repositories', '');
     
+    console.log('仓库管理API路由匹配:', {
+        pathname: pathname,
+        repoPath: repoPath,
+        method: request.method,
+        url: request.url
+    });
+    
     try {
         const { onRequest } = await import('./api/repositories.js');
         return await onRequest({ request, env });
@@ -124,6 +131,12 @@ api.all('/repositories/*', async (c) => {
 
 api.all('/repositories', async (c) => {
     const { request, env } = c;
+    
+    console.log('仓库管理API基础路由匹配:', {
+        pathname: new URL(request.url).pathname,
+        method: request.method,
+        url: request.url
+    });
     
     try {
         const { onRequest } = await import('./api/repositories.js');
