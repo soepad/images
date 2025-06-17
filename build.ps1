@@ -1,4 +1,4 @@
-# PowerShell构建脚本 - 用于在Windows环境中克隆和合并所有图片仓库的内容
+# PowerShell构建脚本 - 用于在Windows环境中克隆和合并所有图片仓库的内容 
 # 此脚本可在本地Windows环境或Cloudflare Pages构建环境中运行
 
 Write-Host "=========================================" -ForegroundColor Blue
