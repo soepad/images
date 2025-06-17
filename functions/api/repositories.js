@@ -141,7 +141,12 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/repositories', '');
   
-  console.log('处理仓库管理请求:', path);
+  console.log('处理仓库管理请求:', {
+    fullPath: url.pathname,
+    method: request.method,
+    path: path,
+    url: request.url
+  });
   
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
@@ -169,6 +174,7 @@ export async function onRequest(context) {
   
   // 获取所有仓库列表
   if (path === '' && request.method === 'GET') {
+    console.log('匹配到获取仓库列表路径');
     try {
       const repos = await getAllRepositories(env);
       
@@ -221,6 +227,7 @@ export async function onRequest(context) {
   
   // 同步仓库文件计数
   if (path.startsWith('/sync-file-count/') && request.method === 'POST') {
+    console.log('匹配到同步文件计数路径');
     try {
       const repoId = parseInt(path.replace('/sync-file-count/', ''));
       
@@ -263,6 +270,7 @@ export async function onRequest(context) {
   
   // 同步所有仓库文件计数
   if (path === '/sync-all-file-counts' && request.method === 'POST') {
+    console.log('匹配到同步所有文件计数路径');
     try {
       console.log('同步所有仓库的文件计数');
       const result = await syncAllRepositoriesFileCount(env);
@@ -290,6 +298,7 @@ export async function onRequest(context) {
   
   // 创建新仓库
   if ((path === '/create' || path === '') && request.method === 'POST') {
+    console.log('匹配到创建仓库路径');
     try {
       console.log('收到创建仓库请求');
       
@@ -413,6 +422,7 @@ export async function onRequest(context) {
   
   // 创建文件夹
   if (path.startsWith('/create-folder/') && request.method === 'POST') {
+    console.log('匹配到创建文件夹路径:', path);
     try {
       const repoId = parseInt(path.replace('/create-folder/', ''));
       
@@ -792,9 +802,21 @@ export async function onRequest(context) {
   }
   
   // 未找到匹配的路由
+  console.log('未找到匹配的路由:', {
+    path: path,
+    method: request.method,
+    fullPath: url.pathname,
+    url: request.url
+  });
+  
   return new Response(JSON.stringify({
     success: false,
-    error: '未找到请求的API端点'
+    error: 'API endpoint repositories' + path + ' not found',
+    debug: {
+      path: path,
+      method: request.method,
+      fullPath: url.pathname
+    }
   }), {
     status: 404,
     headers: {
