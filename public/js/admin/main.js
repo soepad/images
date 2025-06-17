@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 异步初始化其他功能，确保不会阻塞UI
         setTimeout(() => {
             console.log('初始化控制面板');
-    initDashboard();
+            initDashboard();
             
             // 根据当前页面初始化相应的功能
             const currentPage = document.querySelector('.nav-menu li.active');
@@ -160,30 +160,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     initFolderManagement();
                     console.log('加载文件夹列表');
                     loadFolders();
+                } else if (pageType === 'dashboard') {
+                    console.log('初始化控制面板');
+                    // 控制面板不需要额外初始化
                 } else {
-                    console.log('初始化图片管理');
-                    initImageManagement();
-                    console.log('加载图片列表');
-                    loadImages();
+                    console.log('初始化其他页面功能');
+                    // 其他页面保持原有功能
                 }
             } else {
-                // 默认初始化图片管理
-                console.log('初始化图片管理');
-                initImageManagement();
-                console.log('加载图片列表');
-                loadImages();
+                // 默认初始化文件夹管理（而不是图片管理）
+                console.log('默认初始化文件夹管理');
+                initFolderManagement();
+                console.log('加载文件夹列表');
+                loadFolders();
+                
+                // 设置默认激活的导航项
+                const imagesNavItem = document.querySelector('.nav-menu li[data-page="images"]');
+                if (imagesNavItem) {
+                    imagesNavItem.classList.add('active');
+                }
+                
+                // 设置默认显示的页面
+                const imagesPage = document.getElementById('images');
+                const dashboardPage = document.getElementById('dashboard');
+                if (imagesPage && dashboardPage) {
+                    dashboardPage.classList.remove('active');
+                    imagesPage.classList.add('active');
+                }
+                
+                // 更新页面标题
+                const pageTitle = document.getElementById('pageTitle');
+                if (pageTitle) {
+                    pageTitle.textContent = '文件夹管理';
+                }
             }
             
             console.log('初始化仓库管理');
-    initRepositoryManagement();
+            initRepositoryManagement();
             console.log('初始化批量操作');
             initBatchOperations();
             console.log('初始化系统设置');
-    initSettings();
+            initSettings();
             
             // 初始化上传模态框
             console.log('初始化上传模态框');
-    initUploadModal();
+            initUploadModal();
             
             // 添加图片复选框变化事件委托
             document.addEventListener('change', function(e) {
