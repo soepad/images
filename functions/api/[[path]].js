@@ -1801,51 +1801,147 @@ export async function onRequest(context) {
           }, 500);
         }
         
-        // 生成唯一的仓库名称
-        const timestamp = Date.now();
-        const repoName = `${baseName.trim()}-${timestamp}`;
+        // 获取已存在的同名仓库，找出最大序号
+        let maxNumber = 0;
+        try {
+          const existingRepos = await env.DB.prepare(`
+            SELECT name FROM repositories WHERE name LIKE ?
+          `).bind(`${baseName.trim()}-%`).all();
+          
+          // 找出最大序号
+          for (const repo of existingRepos.results || []) {
+            const match = repo.name.match(/-(\d+)$/);
+            if (match) {
+              const num = parseInt(match[1]);
+              if (num > maxNumber) {
+                maxNumber = num;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('查询已存在仓库失败，使用默认序号:', error);
+        }
+        
+        // 生成新序号，使用三位数字格式(001, 002, ...)
+        const newRepoNumber = maxNumber + 1;
+        const paddedNumber = String(newRepoNumber).padStart(3, '0');
+        const repoName = `${baseName.trim()}-${paddedNumber}`;
+        
+        console.log(`尝试创建新仓库: ${repoName} (序号: ${paddedNumber})`);
         
         // 创建Octokit实例
         const octokit = new Octokit({
           auth: env.GITHUB_TOKEN
         });
         
-        // 使用GitHub API创建仓库
-        const repoResponse = await octokit.rest.repos.createForAuthenticatedUser({
-          name: repoName,
-          description: `图片存储仓库 - ${baseName}`,
-          private: false,
-          auto_init: true
-        });
-        
-        console.log('GitHub仓库创建成功:', repoResponse.data);
-        
-        // 在数据库中创建仓库记录
-        const dbResult = await env.DB.prepare(`
-          INSERT INTO repositories (name, owner, token, status, created_at)
-          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(
-          repoName,
-          env.GITHUB_OWNER,
-          env.GITHUB_TOKEN,
-          'active'
-        ).run();
-        
-        const repoId = dbResult.meta.last_row_id;
-        console.log('仓库记录已保存到数据库，ID:', repoId);
-        
-        return jsonResponse({
-          success: true,
-          message: '仓库创建成功',
-          data: {
-            id: repoId,
-            name: repoName,
+        // 检查仓库是否已存在
+        let repoExists = false;
+        try {
+          const existingRepo = await octokit.rest.repos.get({
             owner: env.GITHUB_OWNER,
-            status: 'active',
-            html_url: repoResponse.data.html_url,
-            clone_url: repoResponse.data.clone_url
+            repo: repoName
+          });
+          
+          if (existingRepo.status === 200) {
+            console.log(`仓库 ${repoName} 已存在，跳过创建`);
+            repoExists = true;
           }
-        });
+        } catch (error) {
+          if (error.status !== 404) {
+            console.error(`检查仓库是否存在时出错:`, error);
+          }
+          // 404错误表示仓库不存在，继续创建
+        }
+        
+        // 如果仓库不存在，创建它
+        if (!repoExists) {
+          try {
+            console.log(`尝试创建组织仓库: ${env.GITHUB_OWNER}/${repoName}`);
+            
+            // 尝试创建组织仓库
+            const repoResponse = await octokit.rest.repos.createInOrg({
+              org: env.GITHUB_OWNER,
+              name: repoName,
+              auto_init: true,
+              private: true,
+              description: `图片存储仓库 #${newRepoNumber}`
+            });
+            
+            console.log(`成功创建组织仓库: ${env.GITHUB_OWNER}/${repoName}`);
+            
+            // 在数据库中创建仓库记录
+            const dbResult = await env.DB.prepare(`
+              INSERT INTO repositories (name, owner, token, status, created_at)
+              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              repoName,
+              env.GITHUB_OWNER,
+              env.GITHUB_TOKEN,
+              'active'
+            ).run();
+            
+            const repoId = dbResult.meta.last_row_id;
+            console.log('仓库记录已保存到数据库，ID:', repoId);
+            
+            return jsonResponse({
+              success: true,
+              message: '仓库创建成功',
+              data: {
+                id: repoId,
+                name: repoName,
+                owner: env.GITHUB_OWNER,
+                status: 'active',
+                html_url: repoResponse.data.html_url,
+                clone_url: repoResponse.data.clone_url
+              }
+            });
+            
+          } catch (orgError) {
+            console.log(`创建组织仓库失败，尝试创建个人仓库: ${orgError.message}`);
+            
+            // 如果创建组织仓库失败，尝试创建个人仓库
+            const repoResponse = await octokit.rest.repos.createForAuthenticatedUser({
+              name: repoName,
+              description: `图片存储仓库 #${newRepoNumber}`,
+              private: true,
+              auto_init: true
+            });
+            
+            console.log(`成功创建个人仓库: ${repoName}`);
+            
+            // 在数据库中创建仓库记录
+            const dbResult = await env.DB.prepare(`
+              INSERT INTO repositories (name, owner, token, status, created_at)
+              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              repoName,
+              env.GITHUB_OWNER,
+              env.GITHUB_TOKEN,
+              'active'
+            ).run();
+            
+            const repoId = dbResult.meta.last_row_id;
+            console.log('仓库记录已保存到数据库，ID:', repoId);
+            
+            return jsonResponse({
+              success: true,
+              message: '仓库创建成功',
+              data: {
+                id: repoId,
+                name: repoName,
+                owner: env.GITHUB_OWNER,
+                status: 'active',
+                html_url: repoResponse.data.html_url,
+                clone_url: repoResponse.data.clone_url
+              }
+            });
+          }
+        } else {
+          // 仓库已存在，返回错误
+          return jsonResponse({ 
+            error: `仓库 ${repoName} 已存在` 
+          }, 409);
+        }
         
       } catch (error) {
         console.error('处理创建仓库请求失败:', error);
