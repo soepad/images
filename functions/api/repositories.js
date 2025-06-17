@@ -299,7 +299,7 @@ export async function onRequest(context) {
   }
   
   // 创建新仓库
-  if (path === '/create' && request.method === 'POST') {
+  if (path === 'create' && request.method === 'POST') {
     console.log('匹配到创建仓库路径');
     try {
       console.log('收到创建仓库请求');
