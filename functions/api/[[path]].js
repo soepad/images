@@ -1784,11 +1784,18 @@ export async function onRequest(context) {
           return jsonResponse({ error: '文件夹名称不能为空' }, 400);
         }
         
-        // 验证文件夹名称格式
-        const folderNameRegex = /^[a-zA-Z0-9_-]+$/;
-        if (!folderNameRegex.test(folderName.trim())) {
+        // 验证文件夹名称格式 - 只检查GitHub不允许的字符
+        const invalidChars = /[<>:"/\\|?*\x00-\x1F]/g;
+        if (invalidChars.test(folderName.trim())) {
           return jsonResponse({ 
-            error: '文件夹名称只能包含字母、数字、下划线和连字符' 
+            error: '文件夹名称包含非法字符（不能包含 < > : " / \\ | ? * 和控制字符）' 
+          }, 400);
+        }
+        
+        // 检查文件夹名称长度
+        if (folderName.trim().length > 100) {
+          return jsonResponse({ 
+            error: '文件夹名称过长（最大100个字符）' 
           }, 400);
         }
         
