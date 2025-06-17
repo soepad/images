@@ -13,6 +13,9 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0'
 };
 
 // 生成JSON响应的帮助函数
@@ -159,7 +162,10 @@ export async function onRequest(context) {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Cookie',
     'Access-Control-Allow-Credentials': 'true',
-    'Vary': 'Origin'
+    'Vary': 'Origin',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
 
   // 详细日志
@@ -446,7 +452,10 @@ export async function onRequest(context) {
           
           if (!allowGuestUpload) {
             console.log('游客上传已禁用，拒绝请求');
-            return new Response(JSON.stringify({ error: '游客上传已禁用，请登录后再试' }), {
+            return new Response(JSON.stringify({ 
+              success: false,
+              error: '游客上传已禁用，请登录后再试'
+            }), {
               status: 403,
               headers: {
                 'Content-Type': 'application/json',
@@ -454,8 +463,6 @@ export async function onRequest(context) {
               }
             });
           }
-        } else {
-          console.log('用户已登录，允许上传');
         }
 
         console.log('开始处理文件上传');
@@ -1176,16 +1183,9 @@ export async function onRequest(context) {
             });
           }
           
-          // 确保基本设置存在
-          const defaultSettings = {
-            allow_guest_upload: 'false',
-            site_name: '参界图床'
-          };
+          console.log('返回设置数据:', settingsObj);
           
-          const finalSettings = { ...defaultSettings, ...settingsObj };
-          console.log('返回设置数据:', finalSettings);
-          
-          return new Response(JSON.stringify(finalSettings), {
+          return new Response(JSON.stringify(settingsObj), {
             headers: {
               'Content-Type': 'application/json',
               ...corsHeaders
@@ -1755,6 +1755,111 @@ export async function onRequest(context) {
           success: false, 
           error: '同步仓库文件计数失败', 
           details: error.message 
+        }, 500);
+      }
+    }
+
+    // 创建文件夹（支持 /repositories/create-folder/{repoId} 格式）
+    if (path.match(/^repositories\/create-folder\/(\d+)$/) && request.method === 'POST') {
+      try {
+        console.log('处理创建文件夹请求:', path);
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取仓库ID
+        const repoId = parseInt(path.match(/^repositories\/create-folder\/(\d+)$/)[1], 10);
+        if (isNaN(repoId)) { 
+          return jsonResponse({ error: '无效的仓库ID' }, 400); 
+        }
+
+        // 解析请求体
+        const requestData = await request.json();
+        const { folderName } = requestData;
+        
+        if (!folderName || !folderName.trim()) {
+          return jsonResponse({ error: '文件夹名称不能为空' }, 400);
+        }
+        
+        // 验证文件夹名称格式
+        const folderNameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!folderNameRegex.test(folderName.trim())) {
+          return jsonResponse({ 
+            error: '文件夹名称只能包含字母、数字、下划线和连字符' 
+          }, 400);
+        }
+        
+        console.log(`创建文件夹请求: 仓库ID=${repoId}, 文件夹名=${folderName}`);
+        
+        // 获取仓库信息
+        const repo = await env.DB.prepare(`
+          SELECT * FROM repositories WHERE id = ?
+        `).bind(repoId).first();
+        
+        if (!repo) {
+          return jsonResponse({ error: '仓库不存在' }, 404);
+        }
+        
+        // 创建Octokit实例
+        const octokit = new Octokit({
+          auth: repo.token || env.GITHUB_TOKEN
+        });
+        
+        // 创建文件夹路径
+        const folderPath = `public/${folderName.trim()}`;
+        
+        // 检查文件夹是否已存在
+        try {
+          await octokit.rest.repos.getContent({
+            owner: repo.owner,
+            repo: repo.name,
+            path: folderPath
+          });
+          
+          return jsonResponse({ error: '文件夹已存在' }, 409);
+        } catch (error) {
+          if (error.status !== 404) {
+            console.error('检查文件夹是否存在时出错:', error);
+            return jsonResponse({ error: '检查文件夹状态失败' }, 500);
+          }
+          // 404表示文件夹不存在，继续创建
+        }
+        
+        // 创建文件夹（通过创建一个占位文件）
+        const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+        
+        try {
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner: repo.owner,
+            repo: repo.name,
+            path: `${folderPath}/README.md`,
+            message: `创建文件夹: ${folderName}`,
+            content: btoa(unescape(encodeURIComponent(placeholderContent))),
+            branch: 'main'
+          });
+          
+          console.log(`成功创建文件夹: ${folderPath}`);
+          
+          return jsonResponse({
+            success: true,
+            message: '文件夹创建成功',
+            folderPath: folderPath
+          });
+          
+        } catch (createError) {
+          console.error('创建文件夹失败:', createError);
+          return jsonResponse({ 
+            error: '创建文件夹失败: ' + createError.message 
+          }, 500);
+        }
+        
+      } catch (error) {
+        console.error('处理创建文件夹请求失败:', error);
+        return jsonResponse({ 
+          error: '处理创建文件夹请求失败: ' + error.message 
         }, 500);
       }
     }
