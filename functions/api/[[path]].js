@@ -1850,6 +1850,19 @@ export async function onRequest(context) {
           
           console.log(`成功创建文件夹: ${folderPath}`);
           
+          // 将文件夹信息保存到数据库
+          try {
+            await env.DB.prepare(`
+              INSERT INTO folders (name, path) 
+              VALUES (?, ?)
+            `).bind(folderName.trim(), folderPath).run();
+            
+            console.log('文件夹信息已保存到数据库');
+          } catch (dbError) {
+            console.error('保存文件夹信息到数据库失败:', dbError);
+            // 即使数据库保存失败，GitHub上的文件夹已经创建成功，所以不返回错误
+          }
+          
           return jsonResponse({
             success: true,
             message: '文件夹创建成功',
@@ -1867,6 +1880,47 @@ export async function onRequest(context) {
         console.error('处理创建文件夹请求失败:', error);
         return jsonResponse({ 
           error: '处理创建文件夹请求失败: ' + error.message 
+        }, 500);
+      }
+    }
+
+    // 获取文件夹列表
+    if (path === 'folders' && request.method === 'GET') {
+      try {
+        console.log('处理获取文件夹列表请求');
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 获取所有文件夹及其统计信息
+        const folders = await env.DB.prepare(`
+          SELECT 
+            f.id,
+            f.name,
+            f.path,
+            f.created_at,
+            COALESCE(SUM(ff.size), 0) as total_size,
+            COUNT(ff.id) as file_count
+          FROM folders f
+          LEFT JOIN folder_files ff ON f.id = ff.folder_id
+          GROUP BY f.id, f.name, f.path, f.created_at
+          ORDER BY f.created_at DESC
+        `).all();
+        
+        console.log(`找到 ${folders.results.length} 个文件夹`);
+        
+        return jsonResponse({
+          success: true,
+          data: folders.results
+        });
+        
+      } catch (error) {
+        console.error('获取文件夹列表失败:', error);
+        return jsonResponse({ 
+          error: '获取文件夹列表失败: ' + error.message 
         }, 500);
       }
     }
