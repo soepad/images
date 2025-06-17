@@ -3297,24 +3297,23 @@ async function createFolder(repoId, folderName) {
             body: JSON.stringify({ folderName })
         });
         
-        if (response.error) {
-            throw new Error(response.error);
+        if (response.success) {
+            // 显示成功消息
+            showNotification('文件夹创建成功', 'success');
+            
+            // 关闭模态框
+            closeModal('createFolderModal');
+            
+            // 刷新文件夹列表
+            console.log('刷新文件夹列表');
+            await loadFolders();
+            
+            // 刷新控制面板统计
+            console.log('刷新控制面板统计');
+            await initDashboard();
+        } else {
+            throw new Error(response.error || '创建文件夹失败');
         }
-        
-        // 显示成功消息
-        showNotification('文件夹创建成功', 'success');
-        
-        // 关闭模态框
-        closeModal('createFolderModal');
-        
-        // 刷新文件夹列表
-        console.log('刷新文件夹列表');
-        await loadFolders();
-        
-        // 刷新控制面板统计
-        console.log('刷新控制面板统计');
-        await initDashboard();
-        
     } catch (error) {
         console.error('创建文件夹失败:', error);
         showNotification(`创建文件夹失败: ${error.message}`, 'error');
