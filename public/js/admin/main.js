@@ -1001,19 +1001,109 @@ function createRepositoryCard(repo) {
     // 计算使用百分比
     const usagePercent = threshold ? Math.min((totalSize / threshold) * 100, 100) : 0;
     
+    // 确定仓库状态样式和文本
+    const statusBadgeClass = 
+        repo.status === 'active' ? 'status-active' : 
+        (repo.status === 'inactive' ? 'status-inactive' : 'status-full');
+    
+    const statusText = 
+        repo.status === 'active' ? '活跃' : 
+        (repo.status === 'inactive' ? '禁用' : '已满');
+    
+    // 确定进度条颜色
+    const progressClass = usagePercent < 70 ? 'bg-success' : (usagePercent < 90 ? 'bg-warning' : 'bg-danger');
+    
     card.innerHTML = `
         <div class="repo-header">
             <h3>${repo.name}</h3>
+            <span class="badge ${statusBadgeClass} status-badge">${statusText}</span>
         </div>
         <div class="repo-info">
-            <p><i class="fas fa-file"></i> ${fileCount} 个文件</p>
-            <p><i class="fas fa-hdd"></i> ${formattedSize} / ${formattedThreshold}(阈值)</p>
-            <p><i class="fas fa-clock"></i> 创建于 ${formatDate(repo.created_at)}</p>
-            <div class="progress-bar">
-                <div class="progress" style="width: ${usagePercent}%"></div>
+            <p><strong>所有者:</strong> ${repo.owner}</p>
+            <p><strong>优先级:</strong> ${repo.priority || 0}</p>
+            <p><strong>创建时间:</strong> ${formatDate(repo.created_at)}</p>
+            <p><strong>最后更新:</strong> ${formatDate(repo.updated_at)}</p>
+            <p><strong>已用空间:</strong> ${formattedSize} / ${formattedThreshold}</p>
+            <p><strong>文件数量:</strong> <span id="card-file-count-${repo.id}">${fileCount}</span> 个文件</p>
+            
+            <div class="progress-bar-wrapper">
+                <div class="progress">
+                    <div class="progress-bar ${progressClass}" role="progressbar" style="width: ${usagePercent}%" 
+                        aria-valuenow="${usagePercent}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">${Math.round(usagePercent)}% 已使用</small>
+            </div>
+        </div>
+        <div class="repo-actions">
+            <div class="actions-container">
+                <button class="btn btn-sm btn-outline-primary btn-icon sync-size-btn" data-repo-id="${repo.id}">
+                    <i class="fas fa-arrow-repeat"></i> 同步大小
+                </button>
+                
+                <button class="btn btn-sm btn-outline-info btn-icon sync-count-btn" data-repo-id="${repo.id}">
+                    <i class="fas fa-hash"></i> 同步文件数
+                </button>
+                
+                <button class="btn btn-sm btn-success create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" style="background-color: #28a745 !important; border-color: #28a745 !important; color: white !important;">
+                    <i class="fas fa-folder-plus"></i> 新建文件夹
+                </button>
+                
+                ${repo.status !== 'active' ? `
+                    <button class="btn btn-sm btn-outline-success btn-icon status-btn" data-repo-id="${repo.id}" data-status="active">
+                        <i class="fas fa-play-circle"></i> 激活
+                    </button>
+                ` : ''}
+                
+                ${repo.status !== 'inactive' ? `
+                    <button class="btn btn-sm btn-outline-secondary btn-icon status-btn" data-repo-id="${repo.id}" data-status="inactive">
+                        <i class="fas fa-pause-circle"></i> 禁用
+                    </button>
+                ` : ''}
+                
+                ${repo.status !== 'full' ? `
+                    <button class="btn btn-sm btn-outline-danger btn-icon status-btn" data-repo-id="${repo.id}" data-status="full">
+                        <i class="fas fa-x-circle"></i> 标记已满
+                    </button>
+                ` : ''}
             </div>
         </div>
     `;
+    
+    // 添加事件监听器
+    const syncSizeBtn = card.querySelector('.sync-size-btn');
+    if (syncSizeBtn) {
+        syncSizeBtn.addEventListener('click', async (e) => {
+            const repoId = e.currentTarget.dataset.repoId;
+            await syncRepositorySize(repoId, e.currentTarget);
+        });
+    }
+    
+    const syncCountBtn = card.querySelector('.sync-count-btn');
+    if (syncCountBtn) {
+        syncCountBtn.addEventListener('click', async (e) => {
+            const repoId = e.currentTarget.dataset.repoId;
+            await syncRepositoryFileCount(repoId, e.currentTarget);
+        });
+    }
+    
+    const createFolderBtn = card.querySelector('.create-folder-btn');
+    if (createFolderBtn) {
+        createFolderBtn.addEventListener('click', (e) => {
+            const repoId = e.currentTarget.dataset.repoId;
+            const repoName = e.currentTarget.dataset.repoName;
+            const repoOwner = e.currentTarget.dataset.repoOwner;
+            showCreateFolderModal(repoId, repoName, repoOwner);
+        });
+    }
+    
+    const statusBtns = card.querySelectorAll('.status-btn');
+    statusBtns.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const repoId = e.currentTarget.dataset.repoId;
+            const status = e.currentTarget.dataset.status;
+            await updateRepositoryStatus(repoId, status, e.currentTarget);
+        });
+    });
     
     return card;
 }
@@ -2875,48 +2965,339 @@ function closeCreateRepositoryModal() {
 
 // 创建新仓库
 async function createRepository() {
-    const nameInput = document.getElementById('repoName');
-    const descriptionInput = document.getElementById('repoDescription');
-    const errorElement = document.getElementById('createRepoError');
-    
-    if (!nameInput || !descriptionInput || !errorElement) return;
-    
-    const name = nameInput.value.trim();
-    const description = descriptionInput.value.trim();
-    
-    if (!name) {
-        errorElement.textContent = '请输入仓库名称';
+    const baseName = document.getElementById('baseRepoName').value.trim();
+    if (!baseName) {
+        showNotification('请输入基础仓库名称', 'error');
         return;
     }
     
     try {
-        const response = await safeApiCall('/api/repositories', {
+        const response = await safeApiCall('/api/repositories/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, description })
+            body: JSON.stringify({ baseName })
         });
         
         if (response.error) {
             throw new Error(response.error);
         }
         
-        // 关闭模态框
+        showNotification('新仓库创建成功', 'success');
         closeCreateRepositoryModal();
+        loadRepositories(); // 重新加载仓库列表
+    } catch (error) {
+        console.error('创建仓库失败:', error);
+        showNotification('创建仓库失败: ' + error.message, 'error');
+    }
+}
+
+// 同步仓库大小
+async function syncRepositorySize(repoId, button) {
+    try {
+        // 显示加载状态
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 同步中...`;
         
-        // 清空输入框
-        nameInput.value = '';
-        descriptionInput.value = '';
-        errorElement.textContent = '';
+        const response = await safeApiCall(`/api/repositories/sync-size/${repoId}`, {
+            method: 'POST'
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
         
         // 重新加载仓库列表
         await loadRepositories();
         
-        showNotification('仓库创建成功', 'success');
+        // 显示成功消息
+        showNotification('仓库大小同步成功', 'success');
+        
     } catch (error) {
-        console.error('创建仓库失败:', error);
-        errorElement.textContent = error.message || '创建仓库失败';
+        console.error('同步仓库大小失败:', error);
+        showNotification(`同步仓库大小失败: ${error.message}`, 'error');
+        
+        // 恢复按钮状态
+        button.disabled = false;
+        button.innerHTML = originalContent;
     }
 }
+
+// 同步仓库文件数量
+async function syncRepositoryFileCount(repoId, button) {
+    try {
+        // 显示加载状态
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 同步中...`;
+        
+        const response = await safeApiCall(`/api/repositories/sync-file-count/${repoId}`, {
+            method: 'POST'
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // 更新文件计数显示
+        const countElement = document.getElementById(`card-file-count-${repoId}`);
+        if (countElement) {
+            countElement.textContent = response.file_count;
+        }
+        
+        // 显示成功消息
+        showNotification(`仓库文件数同步成功，实际文件数: ${response.file_count}`, 'success');
+        
+    } catch (error) {
+        console.error('同步仓库文件数失败:', error);
+        showNotification(`同步仓库文件数失败: ${error.message}`, 'error');
+    } finally {
+        // 恢复按钮状态
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    }
+}
+
+// 更新仓库状态
+async function updateRepositoryStatus(repoId, status, button) {
+    try {
+        // 显示加载状态
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 更新中...`;
+        
+        const response = await safeApiCall(`/api/repositories/status/${repoId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // 重新加载仓库列表
+        await loadRepositories();
+        
+        // 显示成功消息
+        showNotification(`仓库状态已更新为 ${status}`, 'success');
+        
+    } catch (error) {
+        console.error('更新仓库状态失败:', error);
+        showNotification(`更新仓库状态失败: ${error.message}`, 'error');
+        
+        // 恢复按钮状态
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    }
+}
+
+// 显示新建文件夹模态框
+function showCreateFolderModal(repoId, repoName, repoOwner) {
+    // 设置目标仓库信息
+    document.getElementById('targetRepoInfo').textContent = `${repoOwner}/${repoName}`;
+    
+    // 设置仓库ID到确认按钮
+    document.getElementById('confirmCreateFolder').dataset.repoId = repoId;
+    
+    // 清空输入框
+    document.getElementById('folderName').value = '';
+    
+    // 显示模态框
+    const modal = document.getElementById('createFolderModal');
+    modal.style.display = 'block';
+    
+    // 聚焦到输入框
+    setTimeout(() => {
+        document.getElementById('folderName').focus();
+    }, 500);
+}
+
+// 创建文件夹
+async function createFolder(repoId, folderName) {
+    try {
+        // 显示加载状态
+        const confirmBtn = document.getElementById('confirmCreateFolder');
+        const originalContent = confirmBtn.innerHTML;
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 创建中...`;
+        
+        const response = await safeApiCall(`/api/repositories/create-folder/${repoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ folderName })
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // 显示成功消息
+        showNotification('文件夹创建成功', 'success');
+        
+        // 关闭模态框
+        closeModal('createFolderModal');
+        
+    } catch (error) {
+        console.error('创建文件夹失败:', error);
+        showNotification(`创建文件夹失败: ${error.message}`, 'error');
+    } finally {
+        // 恢复按钮状态
+        const confirmBtn = document.getElementById('confirmCreateFolder');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '创建';
+    }
+}
+
+// 关闭模态框
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 同步所有仓库大小
+async function syncAllRepositoriesSizes() {
+    try {
+        const button = document.getElementById('syncAllSizesBtn');
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 同步中...`;
+        
+        const response = await safeApiCall('/api/repositories/sync-all-sizes', {
+            method: 'POST'
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // 重新加载仓库列表
+        await loadRepositories();
+        
+        // 显示成功消息
+        showNotification('所有仓库大小同步成功', 'success');
+        
+    } catch (error) {
+        console.error('同步所有仓库大小失败:', error);
+        showNotification(`同步所有仓库大小失败: ${error.message}`, 'error');
+    } finally {
+        // 恢复按钮状态
+        const button = document.getElementById('syncAllSizesBtn');
+        button.disabled = false;
+        button.innerHTML = `<i class="fas fa-arrow-repeat"></i> 同步所有仓库大小`;
+    }
+}
+
+// 同步所有仓库文件数
+async function syncAllRepositoriesFileCounts() {
+    try {
+        const button = document.getElementById('syncAllFileCountsBtn');
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 同步中...`;
+        
+        const response = await safeApiCall('/api/repositories/sync-all-file-counts', {
+            method: 'POST'
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // 重新加载仓库列表
+        await loadRepositories();
+        
+        // 显示成功消息
+        showNotification('所有仓库文件数同步成功', 'success');
+        
+    } catch (error) {
+        console.error('同步所有仓库文件数失败:', error);
+        showNotification(`同步所有仓库文件数失败: ${error.message}`, 'error');
+    } finally {
+        // 恢复按钮状态
+        const button = document.getElementById('syncAllFileCountsBtn');
+        button.disabled = false;
+        button.innerHTML = `<i class="fas fa-hash"></i> 同步所有文件数`;
+    }
+}
+
+// 初始化仓库管理按钮事件
+function initRepositoryButtons() {
+    // 创建新仓库按钮
+    const createRepoBtn = document.getElementById('createRepoBtn');
+    if (createRepoBtn) {
+        createRepoBtn.addEventListener('click', () => {
+            const modal = document.getElementById('createRepoModal');
+            modal.style.display = 'block';
+        });
+    }
+    
+    // 确认创建仓库按钮
+    const confirmCreateRepo = document.getElementById('confirmCreateRepo');
+    if (confirmCreateRepo) {
+        confirmCreateRepo.addEventListener('click', createRepository);
+    }
+    
+    // 确认创建文件夹按钮
+    const confirmCreateFolder = document.getElementById('confirmCreateFolder');
+    if (confirmCreateFolder) {
+        confirmCreateFolder.addEventListener('click', () => {
+            const folderName = document.getElementById('folderName').value.trim();
+            if (!folderName) {
+                showNotification('请输入文件夹名称', 'error');
+                return;
+            }
+            
+            const repoId = confirmCreateFolder.dataset.repoId;
+            createFolder(repoId, folderName);
+        });
+    }
+    
+    // 同步所有仓库大小按钮
+    const syncAllSizesBtn = document.getElementById('syncAllSizesBtn');
+    if (syncAllSizesBtn) {
+        syncAllSizesBtn.addEventListener('click', syncAllRepositoriesSizes);
+    }
+    
+    // 同步所有仓库文件数按钮
+    const syncAllFileCountsBtn = document.getElementById('syncAllFileCountsBtn');
+    if (syncAllFileCountsBtn) {
+        syncAllFileCountsBtn.addEventListener('click', syncAllRepositoriesFileCounts);
+    }
+    
+    // 关闭模态框按钮
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // 点击模态框外部关闭
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+}
+
+// 在页面加载完成后初始化仓库管理按钮
+document.addEventListener('DOMContentLoaded', () => {
+    // 延迟初始化，确保DOM完全加载
+    setTimeout(() => {
+        initRepositoryButtons();
+    }, 1000);
+});
 
