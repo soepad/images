@@ -145,7 +145,9 @@ export async function onRequest(context) {
     fullPath: url.pathname,
     method: request.method,
     path: path,
-    url: request.url
+    url: request.url,
+    pathStartsWithCreateFolder: path.startsWith('/create-folder/'),
+    pathLength: path.length
   });
   
   // 处理OPTIONS请求
@@ -422,7 +424,12 @@ export async function onRequest(context) {
   
   // 创建文件夹
   if (path.startsWith('/create-folder/') && request.method === 'POST') {
-    console.log('匹配到创建文件夹路径:', path);
+    console.log('匹配到创建文件夹路径:', {
+      path: path,
+      method: request.method,
+      startsWithCreateFolder: path.startsWith('/create-folder/'),
+      isPost: request.method === 'POST'
+    });
     try {
       const repoId = parseInt(path.replace('/create-folder/', ''));
       
