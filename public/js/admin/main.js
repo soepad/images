@@ -117,14 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 注意：这里不再需要检查调试模式，因为setupConsoleHandling已经处理了
 
         // 获取图片网格和分页元素
-        imageGrid = document.getElementById('imageGrid');
+        imageGrid = document.getElementById('folderGrid');
         
         // 确保元素存在
         if (!imageGrid) {
-            console.error('未找到图片网格元素，将创建一个新的');
+            console.warn('未找到文件夹网格元素，将创建一个新的');
             imageGrid = document.createElement('div');
-            imageGrid.id = 'imageGrid';
-            imageGrid.className = 'image-grid';
+            imageGrid.id = 'folderGrid';
+            imageGrid.className = 'folder-grid';
             
             // 尝试找到合适的位置插入这个元素
             const imagesSection = document.getElementById('images');
@@ -3252,6 +3252,14 @@ async function createFolder(repoId, folderName) {
         // 关闭模态框
         closeModal('createFolderModal');
         
+        // 刷新文件夹列表
+        console.log('刷新文件夹列表');
+        await loadFolders();
+        
+        // 刷新控制面板统计
+        console.log('刷新控制面板统计');
+        await initDashboard();
+        
     } catch (error) {
         console.error('创建文件夹失败:', error);
         showNotification(`创建文件夹失败: ${error.message}`, 'error');
@@ -3542,10 +3550,6 @@ function renderFolderList(folders) {
                 <i class="fas fa-folder-open"></i>
                 <h3>暂无文件夹</h3>
                 <p>还没有创建任何文件夹</p>
-                <button class="btn btn-primary" onclick="showUploadModal()">
-                    <i class="fas fa-plus"></i>
-                    创建第一个文件夹
-                </button>
             </div>
         `;
         return;
