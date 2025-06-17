@@ -156,6 +156,35 @@
         </div>
     </div>
 
+    <!-- 新建文件夹模态框 -->
+    <div class="modal fade" id="createFolderModal" tabindex="-1" aria-labelledby="createFolderModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createFolderModalLabel">新建文件夹</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createFolderForm">
+                        <div class="mb-3">
+                            <label for="folderName" class="form-label">文件夹名称</label>
+                            <input type="text" class="form-control" id="folderName" placeholder="请输入文件夹名称" required>
+                            <div class="form-text">将在对应仓库的 public 目录下创建此文件夹</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">目标仓库</label>
+                            <div class="form-control-plaintext" id="targetRepoInfo"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmCreateFolder">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 检查登录状态
@@ -356,6 +385,10 @@
                                         <i class="bi bi-hash"></i> 同步文件数
                                     </button>
                                     
+                                    <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}">
+                                        <i class="bi bi-folder-plus"></i> 新建文件夹
+                                    </button>
+                                    
                                     ${repo.status !== 'active' ? `
                                         <button class="btn btn-sm btn-outline-success btn-icon status-btn" data-repo-id="${repo.id}" data-status="active">
                                             <i class="bi bi-play-circle"></i> 激活
@@ -404,6 +437,15 @@
                         const repoId = e.currentTarget.dataset.repoId;
                         const status = e.currentTarget.dataset.status;
                         await updateRepositoryStatus(repoId, status, e.currentTarget);
+                    });
+                });
+                
+                document.querySelectorAll('.create-folder-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const repoId = e.currentTarget.dataset.repoId;
+                        const repoName = e.currentTarget.dataset.repoName;
+                        const repoOwner = e.currentTarget.dataset.repoOwner;
+                        showCreateFolderModal(repoId, repoName, repoOwner);
                     });
                 });
                 
@@ -681,6 +723,18 @@
                 await syncAllRepositoriesFileCounts(document.getElementById('syncAllFileCountsBtn'));
             });
             
+            // 确认创建文件夹按钮点击事件
+            document.getElementById('confirmCreateFolder').addEventListener('click', async () => {
+                const folderName = document.getElementById('folderName').value.trim();
+                if (!folderName) {
+                    alert('请输入文件夹名称');
+                    return;
+                }
+                
+                const repoId = document.getElementById('confirmCreateFolder').dataset.repoId;
+                await createFolder(repoId, folderName);
+            });
+            
             // 退出登录按钮点击事件
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 logout();
@@ -722,6 +776,68 @@
                 // 恢复按钮状态
                 button.disabled = false;
                 button.innerHTML = originalContent;
+            }
+        }
+        
+        // 显示新建文件夹模态框
+        function showCreateFolderModal(repoId, repoName, repoOwner) {
+            // 设置目标仓库信息
+            document.getElementById('targetRepoInfo').textContent = `${repoOwner}/${repoName}`;
+            
+            // 设置仓库ID到确认按钮
+            document.getElementById('confirmCreateFolder').dataset.repoId = repoId;
+            
+            // 清空输入框
+            document.getElementById('folderName').value = '';
+            
+            // 显示模态框
+            const createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
+            createFolderModal.show();
+            
+            // 聚焦到输入框
+            setTimeout(() => {
+                document.getElementById('folderName').focus();
+            }, 500);
+        }
+        
+        // 创建文件夹
+        async function createFolder(repoId, folderName) {
+            try {
+                // 显示加载状态
+                const confirmBtn = document.getElementById('confirmCreateFolder');
+                const originalContent = confirmBtn.innerHTML;
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 创建中...`;
+                
+                const response = await fetch(`/api/repositories/create-folder/${repoId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ folderName })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '创建文件夹失败');
+                }
+                
+                // 显示成功消息
+                alert('文件夹创建成功');
+                
+                // 关闭模态框
+                const createFolderModal = bootstrap.Modal.getInstance(document.getElementById('createFolderModal'));
+                createFolderModal.hide();
+                
+            } catch (error) {
+                console.error('创建文件夹失败:', error);
+                alert(`创建文件夹失败: ${error.message}`);
+            } finally {
+                // 恢复按钮状态
+                const confirmBtn = document.getElementById('confirmCreateFolder');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '创建';
             }
         }
     </script>
