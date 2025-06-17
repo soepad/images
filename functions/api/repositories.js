@@ -139,14 +139,14 @@ async function syncRepositorySize(env, repoId) {
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/repositories', '');
+  const path = url.pathname.replace('/api/repositories', '').replace(/^\/+/, '');
   
   console.log('处理仓库管理请求:', {
     fullPath: url.pathname,
     method: request.method,
     path: path,
     url: request.url,
-    pathStartsWithCreateFolder: path.startsWith('/create-folder/'),
+    pathStartsWithCreateFolder: path.startsWith('create-folder/'),
     pathLength: path.length
   });
   
@@ -228,10 +228,10 @@ export async function onRequest(context) {
   }
   
   // 同步仓库文件计数
-  if (path.startsWith('/sync-file-count/') && request.method === 'POST') {
+  if (path.startsWith('sync-file-count/') && request.method === 'POST') {
     console.log('匹配到同步文件计数路径');
     try {
-      const repoId = parseInt(path.replace('/sync-file-count/', ''));
+      const repoId = parseInt(path.replace('sync-file-count/', ''));
       
       if (isNaN(repoId)) {
         return new Response(JSON.stringify({
@@ -271,7 +271,7 @@ export async function onRequest(context) {
   }
   
   // 同步所有仓库文件计数
-  if (path === '/sync-all-file-counts' && request.method === 'POST') {
+  if (path === 'sync-all-file-counts' && request.method === 'POST') {
     console.log('匹配到同步所有文件计数路径');
     try {
       console.log('同步所有仓库的文件计数');
