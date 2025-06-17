@@ -3281,12 +3281,16 @@ function closeModal(modalId) {
 
 // 初始化仓库管理按钮事件
 function initRepositoryButtons() {
+    console.log('初始化仓库管理按钮事件');
+    
     // 创建新仓库按钮
     const createRepoBtn = document.getElementById('createRepoBtn');
     if (createRepoBtn) {
         createRepoBtn.addEventListener('click', () => {
             const modal = document.getElementById('createRepoModal');
-            modal.style.display = 'block';
+            if (modal) {
+                modal.style.display = 'block';
+            }
         });
     }
     
@@ -3307,29 +3311,54 @@ function initRepositoryButtons() {
             }
             
             const repoId = confirmCreateFolder.dataset.repoId;
-            createFolder(repoId, folderName);
+            if (repoId) {
+                createFolder(repoId, folderName);
+            } else {
+                showNotification('仓库信息丢失，请重试', 'error');
+            }
         });
     }
     
-    
-    // 关闭模态框按钮
-    document.querySelectorAll('.close-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    // 关闭模态框按钮 - 使用事件委托
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('close-btn')) {
             const modal = e.target.closest('.modal');
             if (modal) {
                 modal.style.display = 'none';
             }
-        });
+        }
     });
     
-    // 点击模态框外部关闭
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
+    // 点击模态框外部关闭 - 使用事件委托
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
     });
+    
+    // 为所有模态框添加ESC键关闭功能
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const visibleModals = document.querySelectorAll('.modal[style*="block"]');
+            visibleModals.forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+    });
+    
+    // 同步所有仓库大小按钮
+    const syncAllSizesBtn = document.getElementById('syncAllSizesBtn');
+    if (syncAllSizesBtn) {
+        syncAllSizesBtn.addEventListener('click', syncAllRepositoriesSizes);
+    }
+    
+    // 同步所有仓库文件数按钮
+    const syncAllFileCountsBtn = document.getElementById('syncAllFileCountsBtn');
+    if (syncAllFileCountsBtn) {
+        syncAllFileCountsBtn.addEventListener('click', syncAllRepositoriesFileCounts);
+    }
+    
+    console.log('仓库管理按钮事件初始化完成');
 }
 
 // 在页面加载完成后初始化仓库管理按钮
