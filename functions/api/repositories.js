@@ -545,16 +545,39 @@ export async function onRequest(context) {
       const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
       
       try {
+        // 首先尝试获取main分支的最新提交SHA
+        const branchInfo = await octokit.rest.repos.getBranch({
+          owner: repo.owner,
+          repo: repo.name,
+          branch: 'main'
+        });
+        
+        const latestCommitSha = branchInfo.data.commit.sha;
+        
         await octokit.rest.repos.createOrUpdateFileContents({
           owner: repo.owner,
           repo: repo.name,
           path: `${folderPath}/README.md`,
           message: `创建文件夹: ${folderName}`,
           content: btoa(unescape(encodeURIComponent(placeholderContent))),
-          branch: 'main'
+          branch: 'main',
+          sha: latestCommitSha // 使用最新提交的SHA
         });
         
         console.log(`成功创建文件夹: ${folderPath}`);
+        
+        // 保存文件夹信息到数据库
+        try {
+          await env.DB.prepare(`
+            INSERT INTO folders (name, path, repository_id, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(folderName.trim(), folderPath, repoId).run();
+          
+          console.log(`文件夹信息已保存到数据库: ${folderName}`);
+        } catch (dbError) {
+          console.warn('保存文件夹信息到数据库失败:', dbError);
+          // 不影响创建结果，只记录警告
+        }
         
         return new Response(JSON.stringify({
           success: true,
