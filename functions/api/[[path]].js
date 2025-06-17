@@ -1759,6 +1759,104 @@ export async function onRequest(context) {
       }
     }
 
+    // 创建仓库
+    if (path === 'repositories/create' && request.method === 'POST') {
+      try {
+        console.log('处理创建仓库请求:', path);
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 解析请求体
+        const requestData = await request.json();
+        const { baseName } = requestData;
+        
+        if (!baseName || !baseName.trim()) {
+          return jsonResponse({ error: '仓库基础名称不能为空' }, 400);
+        }
+        
+        // 验证仓库名称格式
+        const repoNameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!repoNameRegex.test(baseName.trim())) {
+          return jsonResponse({ 
+            error: '仓库名称只能包含字母、数字、下划线和连字符' 
+          }, 400);
+        }
+        
+        console.log(`创建仓库请求: 基础名称=${baseName}`);
+        
+        // 检查GitHub相关环境变量
+        if (!env.GITHUB_TOKEN) {
+          return jsonResponse({ 
+            error: '服务器配置错误: 缺少GitHub令牌' 
+          }, 500);
+        }
+        
+        if (!env.GITHUB_OWNER) {
+          return jsonResponse({ 
+            error: '服务器配置错误: 缺少GitHub所有者' 
+          }, 500);
+        }
+        
+        // 生成唯一的仓库名称
+        const timestamp = Date.now();
+        const repoName = `${baseName.trim()}-${timestamp}`;
+        
+        // 创建Octokit实例
+        const octokit = new Octokit({
+          auth: env.GITHUB_TOKEN
+        });
+        
+        // 使用GitHub API创建仓库
+        const repoResponse = await octokit.rest.repos.createForAuthenticatedUser({
+          name: repoName,
+          description: `图片存储仓库 - ${baseName}`,
+          private: false,
+          auto_init: true
+        });
+        
+        console.log('GitHub仓库创建成功:', repoResponse.data);
+        
+        // 在数据库中创建仓库记录
+        const dbResult = await env.DB.prepare(`
+          INSERT INTO repositories (name, owner, repo, token, status, created_at)
+          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(
+          repoName,
+          env.GITHUB_OWNER,
+          repoName,
+          env.GITHUB_TOKEN,
+          'active'
+        ).run();
+        
+        const repoId = dbResult.meta.last_row_id;
+        console.log('仓库记录已保存到数据库，ID:', repoId);
+        
+        return jsonResponse({
+          success: true,
+          message: '仓库创建成功',
+          data: {
+            id: repoId,
+            name: repoName,
+            owner: env.GITHUB_OWNER,
+            repo: repoName,
+            status: 'active',
+            html_url: repoResponse.data.html_url,
+            clone_url: repoResponse.data.clone_url
+          }
+        });
+        
+      } catch (error) {
+        console.error('处理创建仓库请求失败:', error);
+        return jsonResponse({ 
+          error: '处理创建仓库请求失败: ' + error.message 
+        }, 500);
+      }
+    }
+
     // 创建文件夹（支持 /repositories/create-folder/{repoId} 格式）
     if (path.match(/^repositories\/create-folder\/(\d+)$/) && request.method === 'POST') {
       try {
