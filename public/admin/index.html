@@ -75,8 +75,8 @@
                 </li>
                 <li data-page="images">
                     <a href="#images">
-                        <i class="fas fa-images"></i>
-                        <span>图片管理</span>
+                        <i class="fas fa-folder"></i>
+                        <span>文件夹管理</span>
                     </a>
                 </li>
                 <li data-page="repositories">
@@ -119,20 +119,20 @@
                     <div class="dashboard-stats">
                         <div class="stat-card">
                             <div class="stat-icon">
-                                <i class="fas fa-image"></i>
+                                <i class="fas fa-folder"></i>
                             </div>
                             <div class="stat-info">
-                                <h3>总图片数</h3>
-                                <p class="stat-number" id="totalImages">0</p>
+                                <h3>总视频数</h3>
+                                <p class="stat-number" id="totalFolders">0</p>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon">
-                                <i class="fas fa-upload"></i>
+                                <i class="fas fa-file"></i>
                             </div>
                             <div class="stat-info">
-                                <h3>今日上传</h3>
-                                <p class="stat-number" id="todayUploads">0</p>
+                                <h3>总文件数</h3>
+                                <p class="stat-number" id="totalFiles">0</p>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -140,38 +140,40 @@
                                 <i class="fas fa-hdd"></i>
                             </div>
                             <div class="stat-info">
-                                <h3>图片总计</h3>
+                                <h3>总存储大小</h3>
                                 <p class="stat-number" id="totalSize">0 MB</p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- 图片管理 -->
+                <!-- 文件夹管理 -->
                 <section id="images" class="page">
                     <div class="toolbar">
                         <div class="search-box">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="searchInput" placeholder="搜索图片...">
+                            <input type="text" id="searchInput" placeholder="搜索视频...">
                         </div>
                         <div class="filter-box">
                             <select id="sortSelect">
-                                <option value="newest">最新上传</option>
-                                <option value="oldest">最早上传</option>
+                                <option value="newest">最新创建</option>
+                                <option value="oldest">最早创建</option>
                                 <option value="name_asc">名称升序</option>
                                 <option value="name_desc">名称降序</option>
+                                <option value="size_desc">大小降序</option>
+                                <option value="size_asc">大小升序</option>
                             </select>
                         </div>
                         <div class="action-box">
                             <button class="btn btn-primary" id="uploadBtn">
                                 <i class="fas fa-upload"></i>
-                                上传图片
+                                上传文件
                             </button>
                         </div>
                     </div>
 
-                    <div class="image-grid" id="imageGrid">
-                        <!-- 图片列表将通过 JavaScript 动态加载 -->
+                    <div class="folder-grid" id="folderGrid">
+                        <!-- 文件夹列表将通过 JavaScript 动态加载 -->
                     </div>
 
                     <div class="pagination" id="pagination">
@@ -275,15 +277,15 @@
     <div class="modal" id="uploadModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>上传图片</h3>
+                <h3>上传文件</h3>
                 <button class="close-btn">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="upload-area" id="uploadArea">
                     <i class="fas fa-cloud-upload-alt"></i>
                     <p>拖放文件到这里或点击选择文件</p>
-                    <small>允许的文件类型: JPEG, PNG, GIF, WebP, SVG, ICO</small>
-                    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.ico" style="display: none;">
+                    <small>支持各种文件类型，建议单个文件不超过25MB</small>
+                    <input type="file" id="fileInput" multiple style="display: none;">
                 </div>
                 <div class="upload-progress" style="display: none;">
                     <div class="progress-bar">
