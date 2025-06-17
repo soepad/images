@@ -180,32 +180,16 @@
                 </section>
 
                 <!-- 仓库管理 -->
-                <section id="repositories" class="page">
-                    <div class="toolbar">
+                <div class="settings-card" style="margin-top: 20px;">
+                    <h3>仓库列表</h3>
+                    <form id="repositorySettingsForm" class="settings-form">
                         <div class="action-box">
                             <button class="btn btn-success" id="createRepoBtn">
                                 <i class="fas fa-plus-circle"></i> 创建新仓库
                             </button>
-                            <button class="btn btn-primary" id="syncAllSizesBtn">
-                                <i class="fas fa-arrow-repeat"></i> 同步所有仓库大小
-                            </button>
-                            <button class="btn btn-info" id="syncAllFileCountsBtn">
-                                <i class="fas fa-hash"></i> 同步所有文件数
-                            </button>
                         </div>
-                    </div>
+                    </form>
                     
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> 
-                        仓库管理系统会自动监控仓库大小，当接近阈值时自动创建新仓库并切换。您也可以手动管理仓库状态。
-                    </div>
-                    
-                    <!-- 添加调试信息显示区域 -->
-                    <div class="alert alert-secondary mb-4" id="debugInfo">
-                        <h5>仓库阈值调试信息：</h5>
-                        <pre id="repoDebug">加载中...</pre>
-                        <button class="btn btn-sm btn-primary" id="refreshDebugBtn">刷新调试信息</button>
-                    </div>
                     
                     <div class="repo-grid" id="repoGrid">
                         <!-- 仓库列表将通过 JavaScript 动态加载 -->
@@ -214,7 +198,7 @@
                             <span>正在加载仓库列表...</span>
                         </div>
                     </div>
-                </section>
+                </div>
 
                     <div class="settings-card" style="margin-top: 20px;">
                         <h3>仓库设置</h3>
