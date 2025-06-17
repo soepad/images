@@ -3727,4 +3727,15 @@ async function updateDashboardStats() {
     }
 }
 
+// 显示上传模态框
+function showUploadModal() {
+    const uploadModal = document.getElementById('uploadModal');
+    if (uploadModal) {
+        uploadModal.style.display = 'block';
+    } else {
+        console.error('未找到上传模态框');
+        showNotification('上传功能暂时不可用', 'error');
+    }
+}
+
         
