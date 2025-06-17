@@ -1822,12 +1822,11 @@ export async function onRequest(context) {
         
         // 在数据库中创建仓库记录
         const dbResult = await env.DB.prepare(`
-          INSERT INTO repositories (name, owner, repo, token, status, created_at)
-          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO repositories (name, owner, token, status, created_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).bind(
           repoName,
           env.GITHUB_OWNER,
-          repoName,
           env.GITHUB_TOKEN,
           'active'
         ).run();
@@ -1842,7 +1841,6 @@ export async function onRequest(context) {
             id: repoId,
             name: repoName,
             owner: env.GITHUB_OWNER,
-            repo: repoName,
             status: 'active',
             html_url: repoResponse.data.html_url,
             clone_url: repoResponse.data.clone_url
