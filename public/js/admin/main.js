@@ -148,8 +148,32 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             console.log('初始化控制面板');
     initDashboard();
-            console.log('初始化图片管理');
-    initImageManagement();
+            
+            // 根据当前页面初始化相应的功能
+            const currentPage = document.querySelector('.nav-menu li.active');
+            if (currentPage) {
+                const pageType = currentPage.getAttribute('data-page');
+                console.log('当前页面类型:', pageType);
+                
+                if (pageType === 'images') {
+                    console.log('初始化文件夹管理');
+                    initFolderManagement();
+                    console.log('加载文件夹列表');
+                    loadFolders();
+                } else {
+                    console.log('初始化图片管理');
+                    initImageManagement();
+                    console.log('加载图片列表');
+                    loadImages();
+                }
+            } else {
+                // 默认初始化图片管理
+                console.log('初始化图片管理');
+                initImageManagement();
+                console.log('加载图片列表');
+                loadImages();
+            }
+            
             console.log('初始化仓库管理');
     initRepositoryManagement();
             console.log('初始化批量操作');
@@ -167,10 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateBatchButtonsState();
                 }
             });
-            
-            // 加载图片列表
-            console.log('加载图片列表');
-            loadImages();
             
             // 最后尝试加载文件类型，如果失败不影响基本功能
             console.log('加载允许的文件类型');
@@ -804,6 +824,19 @@ function initNavigation() {
                     pageTitle.textContent = item.querySelector('span').textContent;
                 }
             });
+            
+            // 根据页面类型初始化相应的功能
+            if (targetPage === 'images') {
+                console.log('切换到文件夹管理页面');
+                initFolderManagement();
+                loadFolders();
+            } else if (targetPage === 'dashboard') {
+                console.log('切换到控制面板');
+                initDashboard();
+            } else {
+                console.log('切换到其他页面');
+                // 其他页面保持原有功能
+            }
         });
     });
 
@@ -854,19 +887,19 @@ function initImageManagement() {
     const searchInput = document.getElementById('searchInput');
     const sortSelect = document.getElementById('sortSelect');
     const uploadBtn = document.getElementById('uploadBtn');
-
+    
     if (searchInput) {
     // 搜索功能
-    let searchTimeout;
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
                 currentSearch = e.target.value.trim();
-            currentPage = 1;
-            loadImages();
+                currentPage = 1;
+                loadImages();
         }, 300);
-    });
-
+        });
+        
         // 确保回车键也能触发搜索
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -879,14 +912,14 @@ function initImageManagement() {
     } else {
         console.warn('未找到搜索输入框');
     }
-
+    
     if (sortSelect) {
     // 排序功能
-    sortSelect.addEventListener('change', (e) => {
-        currentSort = e.target.value;
-        currentPage = 1;
-        loadImages();
-    });
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            currentPage = 1;
+            loadImages();
+        });
     } else {
         console.warn('未找到排序选择框');
     }
@@ -3114,7 +3147,7 @@ function showCreateFolderModal(repoId, repoName, repoOwner) {
     // 聚焦到输入框
     setTimeout(() => {
         document.getElementById('folderName').focus();
-    }, 500);
+            }, 500);
 }
 
 // 创建文件夹
@@ -3162,6 +3195,67 @@ function closeModal(modalId) {
         modal.style.display = 'none';
     }
 }
+
+// 初始化仓库管理按钮事件
+function initRepositoryButtons() {
+    // 创建新仓库按钮
+    const createRepoBtn = document.getElementById('createRepoBtn');
+    if (createRepoBtn) {
+        createRepoBtn.addEventListener('click', () => {
+            const modal = document.getElementById('createRepoModal');
+            modal.style.display = 'block';
+        });
+    }
+    
+    // 确认创建仓库按钮
+    const confirmCreateRepo = document.getElementById('confirmCreateRepo');
+    if (confirmCreateRepo) {
+        confirmCreateRepo.addEventListener('click', createRepository);
+    }
+    
+    // 确认创建文件夹按钮
+    const confirmCreateFolder = document.getElementById('confirmCreateFolder');
+    if (confirmCreateFolder) {
+        confirmCreateFolder.addEventListener('click', () => {
+            const folderName = document.getElementById('folderName').value.trim();
+            if (!folderName) {
+                showNotification('请输入文件夹名称', 'error');
+                return;
+            }
+            
+            const repoId = confirmCreateFolder.dataset.repoId;
+            createFolder(repoId, folderName);
+        });
+    }
+    
+    
+    // 关闭模态框按钮
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // 点击模态框外部关闭
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+}
+
+// 在页面加载完成后初始化仓库管理按钮
+document.addEventListener('DOMContentLoaded', () => {
+    // 延迟初始化，确保DOM完全加载
+    setTimeout(() => {
+        initRepositoryButtons();
+    }, 1000);
+});
 
 // 同步所有仓库大小
 async function syncAllRepositoriesSizes() {
@@ -3231,36 +3325,6 @@ async function syncAllRepositoriesFileCounts() {
 
 // 初始化仓库管理按钮事件
 function initRepositoryButtons() {
-    // 创建新仓库按钮
-    const createRepoBtn = document.getElementById('createRepoBtn');
-    if (createRepoBtn) {
-        createRepoBtn.addEventListener('click', () => {
-            const modal = document.getElementById('createRepoModal');
-            modal.style.display = 'block';
-        });
-    }
-    
-    // 确认创建仓库按钮
-    const confirmCreateRepo = document.getElementById('confirmCreateRepo');
-    if (confirmCreateRepo) {
-        confirmCreateRepo.addEventListener('click', createRepository);
-    }
-    
-    // 确认创建文件夹按钮
-    const confirmCreateFolder = document.getElementById('confirmCreateFolder');
-    if (confirmCreateFolder) {
-        confirmCreateFolder.addEventListener('click', () => {
-            const folderName = document.getElementById('folderName').value.trim();
-            if (!folderName) {
-                showNotification('请输入文件夹名称', 'error');
-                return;
-            }
-            
-            const repoId = confirmCreateFolder.dataset.repoId;
-            createFolder(repoId, folderName);
-        });
-    }
-    
     // 同步所有仓库大小按钮
     const syncAllSizesBtn = document.getElementById('syncAllSizesBtn');
     if (syncAllSizesBtn) {
@@ -3272,32 +3336,289 @@ function initRepositoryButtons() {
     if (syncAllFileCountsBtn) {
         syncAllFileCountsBtn.addEventListener('click', syncAllRepositoriesFileCounts);
     }
+}
+
+// 文件夹管理功能
+function initFolderManagement() {
+    console.log('初始化文件夹管理功能');
     
-    // 关闭模态框按钮
-    document.querySelectorAll('.close-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modal = e.target.closest('.modal');
-            if (modal) {
-                modal.style.display = 'none';
+    // 获取搜索输入框
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        // 添加搜索功能
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentSearch = e.target.value.trim();
+                currentPage = 1;
+                loadFolders();
+            }, 500);
+        });
+        
+        // 添加回车搜索
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentSearch = e.target.value.trim();
+                currentPage = 1;
+                loadFolders();
             }
         });
-    });
+    }
     
-    // 点击模态框外部关闭
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
+    // 获取排序选择框
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            currentPage = 1;
+            loadFolders();
         });
+    }
+    
+    // 获取上传按钮
+    const uploadBtn = document.getElementById('uploadBtn');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            showUploadModal();
+        });
+    }
+    
+    console.log('文件夹管理功能初始化完成');
+}
+
+async function loadFolders(page = 1, search = '') {
+    try {
+        console.log('开始加载文件夹列表');
+        
+        // 显示加载状态
+        if (imageGrid) {
+            imageGrid.innerHTML = `
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>正在加载文件夹列表...</span>
+                </div>
+            `;
+        }
+        
+        // 构建API URL
+        let url = '/api/folders';
+        const params = new URLSearchParams();
+        
+        if (page > 1) {
+            params.append('page', page);
+        }
+        
+        if (search) {
+            params.append('search', search);
+        }
+        
+        if (currentSort && currentSort !== 'newest') {
+            params.append('sort', currentSort);
+        }
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        console.log('发送请求:', url);
+        
+        const response = await safeApiCall(url, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (!response.success) {
+            throw new Error(response.error || '加载文件夹列表失败');
+        }
+        
+        const folders = response.data || [];
+        console.log(`加载到 ${folders.length} 个文件夹`);
+        
+        // 渲染文件夹列表
+        renderFolderList(folders);
+        
+    } catch (error) {
+        console.error('加载文件夹列表失败:', error);
+        
+        if (imageGrid) {
+            imageGrid.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>加载文件夹列表失败</p>
+                    <button class="btn btn-primary" onclick="loadFolders()">重试</button>
+                </div>
+            `;
+        }
+        
+        showNotification('加载文件夹列表失败: ' + error.message, 'error');
+    }
+}
+
+function renderFolderList(folders) {
+    if (!imageGrid) {
+        console.error('文件夹网格元素不存在');
+        return;
+    }
+    
+    if (folders.length === 0) {
+        imageGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>暂无文件夹</h3>
+                <p>还没有创建任何文件夹</p>
+                <button class="btn btn-primary" onclick="showUploadModal()">
+                    <i class="fas fa-plus"></i>
+                    创建第一个文件夹
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    const folderCards = folders.map(folder => createFolderCard(folder)).join('');
+    imageGrid.innerHTML = folderCards;
+}
+
+function createFolderCard(folder) {
+    const size = formatFileSize(folder.total_size || 0);
+    const fileCount = folder.file_count || 0;
+    const createdAt = formatDate(folder.created_at);
+    
+    return `
+        <div class="folder-card" data-folder-id="${folder.id}">
+            <div class="folder-header">
+                <div class="folder-icon">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <div class="folder-info">
+                    <h3 class="folder-name" onclick="openFolder('${folder.id}', '${folder.name}')">
+                        ${folder.name}
+                    </h3>
+                    <p class="folder-path">${folder.path}</p>
+                </div>
+                <div class="folder-actions">
+                    <button class="btn btn-sm btn-outline" onclick="showFolderMenu(event, ${folder.id})">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="folder-stats">
+                <div class="stat-item">
+                    <i class="fas fa-file"></i>
+                    <span>${fileCount} 个文件</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-hdd"></i>
+                    <span>${size}</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>${createdAt}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function openFolder(folderId, folderName) {
+    // 这里将来会实现打开文件夹显示文件列表的功能
+    console.log('打开文件夹:', folderId, folderName);
+    showNotification(`打开文件夹: ${folderName}`, 'info');
+}
+
+function showFolderMenu(event, folderId) {
+    event.stopPropagation();
+    
+    const menuItems = [
+        {
+            label: '查看文件',
+            icon: 'fas fa-list',
+            action: () => openFolder(folderId)
+        },
+        {
+            label: '重命名',
+            icon: 'fas fa-edit',
+            action: () => renameFolder(folderId)
+        },
+        {
+            label: '删除',
+            icon: 'fas fa-trash',
+            action: () => deleteFolder(folderId),
+            danger: true
+        }
+    ];
+    
+    showGlobalDropdown(menuItems, event.target, (item) => {
+        item.action();
     });
 }
 
-// 在页面加载完成后初始化仓库管理按钮
-document.addEventListener('DOMContentLoaded', () => {
-    // 延迟初始化，确保DOM完全加载
-    setTimeout(() => {
-        initRepositoryButtons();
-    }, 1000);
-});
+function renameFolder(folderId) {
+    // 实现重命名文件夹功能
+    console.log('重命名文件夹:', folderId);
+    showNotification('重命名功能待实现', 'info');
+}
 
+function deleteFolder(folderId) {
+    // 实现删除文件夹功能
+    console.log('删除文件夹:', folderId);
+    showNotification('删除功能待实现', 'info');
+}
+
+// 修改控制面板统计信息更新函数，支持文件夹统计
+async function updateDashboardStats() {
+    try {
+        console.log('更新控制面板统计信息');
+        
+        // 获取文件夹统计信息
+        const foldersResponse = await safeApiCall('/api/folders', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (foldersResponse.success) {
+            const folders = foldersResponse.data || [];
+            
+            // 计算总文件夹数
+            const totalFolders = folders.length;
+            
+            // 计算总文件数和总大小
+            let totalFiles = 0;
+            let totalSize = 0;
+            
+            folders.forEach(folder => {
+                totalFiles += folder.file_count || 0;
+                totalSize += folder.total_size || 0;
+            });
+            
+            // 更新DOM
+            const totalFoldersElement = document.getElementById('totalFolders');
+            const totalFilesElement = document.getElementById('totalFiles');
+            const totalSizeElement = document.getElementById('totalSize');
+            
+            if (totalFoldersElement) {
+                totalFoldersElement.textContent = totalFolders.toLocaleString();
+            }
+            
+            if (totalFilesElement) {
+                totalFilesElement.textContent = totalFiles.toLocaleString();
+            }
+            
+            if (totalSizeElement) {
+                totalSizeElement.textContent = formatFileSize(totalSize);
+            }
+            
+            console.log('控制面板统计信息更新完成:', {
+                totalFolders,
+                totalFiles,
+                totalSize: formatFileSize(totalSize)
+            });
+        }
+        
+    } catch (error) {
+        console.error('更新控制面板统计信息失败:', error);
+    }
+}
+
+        
