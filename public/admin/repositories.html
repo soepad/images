@@ -50,6 +50,18 @@
         .actions-container {
             display: flex;
             gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .create-folder-btn {
+            background-color: #28a745 !important;
+            border-color: #28a745 !important;
+            color: white !important;
+        }
+        
+        .create-folder-btn:hover {
+            background-color: #218838 !important;
+            border-color: #1e7e34 !important;
         }
         
         .spinner-border-sm {
@@ -187,6 +199,25 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 检查Bootstrap Icons是否加载
+        document.addEventListener('DOMContentLoaded', () => {
+            // 测试Bootstrap Icons是否可用
+            const testIcon = document.createElement('i');
+            testIcon.className = 'bi bi-folder-plus';
+            document.body.appendChild(testIcon);
+            
+            // 检查图标是否有样式
+            const computedStyle = window.getComputedStyle(testIcon, '::before');
+            console.log('Bootstrap Icons 测试:', {
+                iconElement: testIcon,
+                computedStyle: computedStyle,
+                content: computedStyle.content
+            });
+            
+            // 移除测试元素
+            document.body.removeChild(testIcon);
+        });
+        
         // 检查登录状态
         function checkLoginStatus() {
             const cookies = document.cookie.split(';');
@@ -351,6 +382,8 @@
                     // 生成唯一ID以便稍后更新
                     const fileCountId = `card-file-count-${repo.id}`;
                     
+                    console.log(`渲染仓库卡片: ${repo.name}, ID: ${repo.id}`);
+                    
                     const card = document.createElement('div');
                     card.className = 'col-md-6 col-lg-4 mb-4';
                     card.innerHTML = `
@@ -417,6 +450,8 @@
                     syncRepoFileCountInBackground(repo.id, document.getElementById(fileCountId));
                 });
                 
+                console.log('仓库卡片渲染完成，开始添加事件监听器');
+                
                 // 添加事件监听
                 document.querySelectorAll('.sync-size-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
@@ -440,11 +475,15 @@
                     });
                 });
                 
-                document.querySelectorAll('.create-folder-btn').forEach(btn => {
+                const createFolderBtns = document.querySelectorAll('.create-folder-btn');
+                console.log(`找到 ${createFolderBtns.length} 个新建文件夹按钮`);
+                
+                createFolderBtns.forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const repoId = e.currentTarget.dataset.repoId;
                         const repoName = e.currentTarget.dataset.repoName;
                         const repoOwner = e.currentTarget.dataset.repoOwner;
+                        console.log(`点击新建文件夹按钮: 仓库ID=${repoId}, 名称=${repoName}, 所有者=${repoOwner}`);
                         showCreateFolderModal(repoId, repoName, repoOwner);
                     });
                 });
@@ -739,6 +778,16 @@
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 logout();
             });
+            
+            // 添加测试按钮（临时）
+            const testBtn = document.createElement('button');
+            testBtn.className = 'btn btn-warning mt-3';
+            testBtn.innerHTML = '<i class="bi bi-folder-plus"></i> 测试新建文件夹功能';
+            testBtn.onclick = () => {
+                console.log('测试新建文件夹功能');
+                showCreateFolderModal(1, 'test-repo', 'test-owner');
+            };
+            document.querySelector('.container').appendChild(testBtn);
         });
         
         // 同步所有仓库文件数
