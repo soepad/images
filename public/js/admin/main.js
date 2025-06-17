@@ -855,30 +855,84 @@ function initNavigation() {
 // 控制面板功能
 async function initDashboard() {
     try {
-        // 获取统计数据
-        const stats = await safeApiCall('/api/stats/summary');
+        // 获取文件夹统计信息
+        const foldersResponse = await safeApiCall('/api/folders', {
+            method: 'GET',
+            credentials: 'include'
+        });
         
-        if (stats.error) {
-            showToast(`加载统计数据失败: ${stats.error}`, 'error');
-            // 使用默认值
-            document.getElementById('totalImages').textContent = '-';
-            document.getElementById('todayUploads').textContent = '-';
-            document.getElementById('totalSize').textContent = '-';
-        } else {
-        // 更新统计卡片
-            document.getElementById('totalImages').textContent = stats.total_images || '0';
-            document.getElementById('todayUploads').textContent = stats.today_uploads || '0';
+        if (foldersResponse.success) {
+            const folders = foldersResponse.data || [];
             
-            // 处理并显示图片总大小，保留2位小数
+            // 计算总文件夹数
+            const totalFolders = folders.length;
+            
+            // 计算总文件数和总大小
+            let totalFiles = 0;
+            let totalSize = 0;
+            
+            folders.forEach(folder => {
+                totalFiles += folder.file_count || 0;
+                totalSize += folder.total_size || 0;
+            });
+            
+            // 更新DOM
+            const totalFoldersElement = document.getElementById('totalFolders');
+            const totalFilesElement = document.getElementById('totalFiles');
             const totalSizeElement = document.getElementById('totalSize');
+            
+            if (totalFoldersElement) {
+                totalFoldersElement.textContent = totalFolders.toLocaleString();
+            }
+            
+            if (totalFilesElement) {
+                totalFilesElement.textContent = totalFiles.toLocaleString();
+            }
+            
             if (totalSizeElement) {
-                const sizeInBytes = stats.total_size || 0;
-                totalSizeElement.textContent = formatFileSize(sizeInBytes, 2);
+                totalSizeElement.textContent = formatFileSize(totalSize);
+            }
+            
+            console.log('控制面板统计信息更新完成:', {
+                totalFolders,
+                totalFiles,
+                totalSize: formatFileSize(totalSize)
+            });
+        } else {
+            console.error('获取文件夹统计信息失败:', foldersResponse.error);
+            // 使用默认值
+            const totalFoldersElement = document.getElementById('totalFolders');
+            const totalFilesElement = document.getElementById('totalFiles');
+            const totalSizeElement = document.getElementById('totalSize');
+            
+            if (totalFoldersElement) {
+                totalFoldersElement.textContent = '0';
+            }
+            if (totalFilesElement) {
+                totalFilesElement.textContent = '0';
+            }
+            if (totalSizeElement) {
+                totalSizeElement.textContent = '0 MB';
             }
         }
     } catch (error) {
         console.error('加载控制面板数据失败:', error);
         showToast('加载控制面板数据失败', 'error');
+        
+        // 使用默认值
+        const totalFoldersElement = document.getElementById('totalFolders');
+        const totalFilesElement = document.getElementById('totalFiles');
+        const totalSizeElement = document.getElementById('totalSize');
+        
+        if (totalFoldersElement) {
+            totalFoldersElement.textContent = '0';
+        }
+        if (totalFilesElement) {
+            totalFilesElement.textContent = '0';
+        }
+        if (totalSizeElement) {
+            totalSizeElement.textContent = '0 MB';
+        }
     }
 }
 
@@ -3614,10 +3668,41 @@ async function updateDashboardStats() {
                 totalFiles,
                 totalSize: formatFileSize(totalSize)
             });
+        } else {
+            console.error('获取文件夹统计信息失败:', foldersResponse.error);
+            // 使用默认值
+            const totalFoldersElement = document.getElementById('totalFolders');
+            const totalFilesElement = document.getElementById('totalFiles');
+            const totalSizeElement = document.getElementById('totalSize');
+            
+            if (totalFoldersElement) {
+                totalFoldersElement.textContent = '0';
+            }
+            if (totalFilesElement) {
+                totalFilesElement.textContent = '0';
+            }
+            if (totalSizeElement) {
+                totalSizeElement.textContent = '0 MB';
+            }
         }
-        
     } catch (error) {
         console.error('更新控制面板统计信息失败:', error);
+        showToast('加载控制面板数据失败', 'error');
+        
+        // 使用默认值
+        const totalFoldersElement = document.getElementById('totalFolders');
+        const totalFilesElement = document.getElementById('totalFiles');
+        const totalSizeElement = document.getElementById('totalSize');
+        
+        if (totalFoldersElement) {
+            totalFoldersElement.textContent = '0';
+        }
+        if (totalFilesElement) {
+            totalFilesElement.textContent = '0';
+        }
+        if (totalSizeElement) {
+            totalSizeElement.textContent = '0 MB';
+        }
     }
 }
 
