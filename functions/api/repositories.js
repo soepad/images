@@ -411,19 +411,199 @@ export async function onRequest(context) {
     }
   }
   
-  // 简化创建仓库的API端点已移除，只使用标准GitHub API创建仓库
+  // 创建文件夹
+  if (path.startsWith('/create-folder/') && request.method === 'POST') {
+    try {
+      const repoId = parseInt(path.replace('/create-folder/', ''));
+      
+      if (isNaN(repoId)) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '无效的仓库ID'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      // 解析请求体
+      const requestData = await request.json();
+      const { folderName } = requestData;
+      
+      if (!folderName || !folderName.trim()) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '文件夹名称不能为空'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      // 验证文件夹名称格式
+      const folderNameRegex = /^[a-zA-Z0-9_-]+$/;
+      if (!folderNameRegex.test(folderName.trim())) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '文件夹名称只能包含字母、数字、下划线和连字符'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      console.log(`创建文件夹请求: 仓库ID=${repoId}, 文件夹名=${folderName}`);
+      
+      // 获取仓库信息
+      const repo = await env.DB.prepare(`
+        SELECT * FROM repositories WHERE id = ?
+      `).bind(repoId).first();
+      
+      if (!repo) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '仓库不存在'
+        }), {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      // 创建Octokit实例
+      const octokit = new Octokit({
+        auth: env.GITHUB_TOKEN
+      });
+      
+      // 创建文件夹路径
+      const folderPath = `public/${folderName.trim()}`;
+      
+      // 检查文件夹是否已存在
+      try {
+        await octokit.rest.repos.getContent({
+          owner: repo.owner,
+          repo: repo.name,
+          path: folderPath
+        });
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: '文件夹已存在'
+        }), {
+          status: 409,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      } catch (error) {
+        if (error.status !== 404) {
+          console.error('检查文件夹是否存在时出错:', error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: '检查文件夹状态失败'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
+        // 404表示文件夹不存在，继续创建
+      }
+      
+      // 创建文件夹（通过创建一个占位文件）
+      const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+      
+      try {
+        await octokit.rest.repos.createOrUpdateFileContents({
+          owner: repo.owner,
+          repo: repo.name,
+          path: `${folderPath}/README.md`,
+          message: `创建文件夹: ${folderName}`,
+          content: btoa(unescape(encodeURIComponent(placeholderContent))),
+          branch: 'main'
+        });
+        
+        console.log(`成功创建文件夹: ${folderPath}`);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: '文件夹创建成功',
+          folderPath: folderPath
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+        
+      } catch (createError) {
+        console.error('创建文件夹失败:', createError);
+        return new Response(JSON.stringify({
+          success: false,
+          error: '创建文件夹失败: ' + createError.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error('处理创建文件夹请求失败:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: '处理创建文件夹请求失败: ' + error.message
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+  }
   
   // 更新仓库状态
   if (path.startsWith('/status/') && request.method === 'PUT') {
     try {
       const repoId = parseInt(path.replace('/status/', ''));
-      const data = await request.json();
-      const { status } = data;
       
-      if (!repoId || isNaN(repoId)) {
+      if (isNaN(repoId)) {
         return new Response(JSON.stringify({
           success: false,
           error: '无效的仓库ID'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      const requestData = await request.json();
+      const { status } = requestData;
+      
+      if (!status) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '状态值不能为空'
         }), {
           status: 400,
           headers: {
