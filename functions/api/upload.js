@@ -149,20 +149,6 @@ export async function onRequest(context) {
         });
       }
       
-      // 验证文件类型
-      if (!file.type.startsWith('image/')) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: '仅支持上传图片文件'
-        }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        });
-      }
-      
       // 读取文件内容
       const fileBuffer = await file.arrayBuffer();
       const base64Data = arrayBufferToBase64(fileBuffer);
@@ -435,18 +421,18 @@ export async function onRequest(context) {
       }
       
       // 验证文件类型
-      if (!mimeType.startsWith('image/')) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: '仅支持上传图片文件'
-        }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        });
-      }
+      // if (!mimeType.startsWith('image/')) {
+      //   return new Response(JSON.stringify({
+      //     success: false,
+      //     error: '仅支持上传图片文件'
+      //   }), {
+      //     status: 400,
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       ...corsHeaders
+      //     }
+      //   });
+      // }
       
       // 生成会话ID
       const sessionId = uuidv4();
