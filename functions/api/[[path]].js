@@ -495,11 +495,14 @@ export async function onRequest(context) {
           
           const allowedTypes = allowedTypesSettings?.value 
             ? allowedTypesSettings.value.split(',') 
-            : ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'];
+            : ['*/*']; // 允许所有文件类型
           
           console.log('允许的文件类型:', allowedTypes);
           
-          if (!allowedTypes.includes(file.type)) {
+          // 如果设置为允许所有类型，跳过类型检查
+          if (allowedTypes.includes('*/*') || allowedTypes.includes('*')) {
+            console.log('允许所有文件类型，跳过类型检查');
+          } else if (!allowedTypes.includes(file.type)) {
             console.error('不支持的文件类型:', file.type);
             return new Response(JSON.stringify({ 
               error: '不支持的文件类型',
@@ -514,20 +517,8 @@ export async function onRequest(context) {
           }
         } catch (error) {
           console.error('检查文件类型时出错:', error);
-          // 如果出错，使用默认的类型限制
-          const defaultAllowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'];
-          if (!defaultAllowedTypes.includes(file.type)) {
-            return new Response(JSON.stringify({ 
-              error: '不支持的文件类型',
-              allowedTypes: defaultAllowedTypes.join(', ')
-            }), {
-              status: 400,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              }
-            });
-          }
+          // 如果出错，允许所有文件类型
+          console.log('文件类型检查出错，允许所有文件类型');
         }
 
         // 检查文件大小
