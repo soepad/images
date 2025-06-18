@@ -2481,13 +2481,25 @@ export async function onRequest(context) {
         
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
+          
+          // 首先获取当前分支的SHA
+          const branchInfo = await octokit.rest.repos.getBranch({
+            owner: repo.owner,
+            repo: repo.name,
+            branch: 'main'
+          });
+          
+          const currentSha = branchInfo.data.commit.sha;
+          console.log(`获取到当前分支SHA: ${currentSha}`);
+          
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
             message: `创建文件夹: ${folderName}`,
             content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main'
+            branch: 'main',
+            sha: currentSha
           });
           
           console.log(`成功创建文件夹: ${folderPath}`);
