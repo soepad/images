@@ -1097,6 +1097,15 @@ function createRepositoryCard(repo) {
     card.className = 'repo-card';
     card.dataset.repoId = repo.id;
     
+    // 调试信息：查看仓库状态
+    console.log('创建仓库卡片，仓库状态:', {
+        repoId: repo.id,
+        repoName: repo.name,
+        status: repo.status,
+        statusType: typeof repo.status,
+        isActive: repo.status === 'active'
+    });
+    
     // 计算仓库的文件数量和总大小
     const fileCount = repo.file_count || 0;
     const totalSize = repo.total_size || 0;
@@ -1144,7 +1153,7 @@ function createRepositoryCard(repo) {
         </div>
         <div class="repo-actions">
             <div class="actions-container">
-                <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" ${repo.status !== 'active' ? 'disabled style="background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 0.6; cursor: not-allowed;"' : ''}>
+                <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" ${repo.status === 'active' ? '' : 'disabled style="background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 0.6; cursor: not-allowed;"'}>
                     <i class="fas fa-folder-plus"></i> 新建文件夹
                 </button>
                 
