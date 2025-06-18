@@ -580,8 +580,8 @@ export async function onRequest(context) {
         if (!latestCommitSha) {
           console.log('没有SHA，先创建初始文件...');
           try {
-            // 创建一个初始文件
-            await octokit.rest.repos.createOrUpdateFileContents({
+            // 创建一个初始文件，使用createFile避免SHA参数问题
+            await octokit.rest.repos.createFile({
               owner: repo.owner,
               repo: repo.name,
               path: 'public/.gitkeep',
