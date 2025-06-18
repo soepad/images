@@ -2482,32 +2482,28 @@ export async function onRequest(context) {
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
           
-          // 首先获取当前分支的SHA
-          const branchInfo = await octokit.rest.repos.getBranch({
-            owner: repo.owner,
-            repo: repo.name,
-            branch: 'main'
-          });
-          
-          const currentSha = branchInfo.data.commit.sha;
-          console.log(`获取到当前分支SHA: ${currentSha}`);
-          
+          // 直接创建文件，不检查SHA
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
             message: `创建文件夹: ${folderName}`,
             content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main',
-            sha: currentSha
+            branch: 'main'
           });
           
           console.log(`成功创建文件夹: ${folderPath}`);
         } catch (createError) {
           console.error('创建文件夹失败:', createError);
-          return jsonResponse({ 
-            error: '创建文件夹失败: ' + createError.message 
-          }, 500);
+          
+          // 如果是因为文件已存在而失败，我们认为是成功的
+          if (createError.message && createError.message.includes('already exists')) {
+            console.log('文件夹已存在，视为成功');
+          } else {
+            return jsonResponse({ 
+              error: '创建文件夹失败: ' + createError.message 
+            }, 500);
+          }
         }
         
         // 保存文件夹信息到数据库
