@@ -608,34 +608,48 @@ export async function onRequest(context) {
         }
         
         // 现在创建文件夹
-        if (latestCommitSha) {
-          // 有SHA，使用createOrUpdateFileContents
-          const createFileParams = {
-            owner: repo.owner,
-            repo: repo.name,
-            path: `${folderPath}/README.md`,
-            message: `创建文件夹: ${folderName}`,
-            content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main',
-            sha: latestCommitSha
-          };
+        try {
+          if (latestCommitSha) {
+            // 有SHA，使用createOrUpdateFileContents
+            const createFileParams = {
+              owner: repo.owner,
+              repo: repo.name,
+              path: `${folderPath}/README.md`,
+              message: `创建文件夹: ${folderName}`,
+              content: btoa(unescape(encodeURIComponent(placeholderContent))),
+              branch: 'main',
+              sha: latestCommitSha
+            };
+            
+            console.log(`使用SHA创建文件: ${latestCommitSha}`);
+            await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
+          } else {
+            // 没有SHA，使用createFile（不需要SHA参数）
+            console.log('没有SHA，使用createFile方法');
+            await octokit.rest.repos.createFile({
+              owner: repo.owner,
+              repo: repo.name,
+              path: `${folderPath}/README.md`,
+              message: `创建文件夹: ${folderName}`,
+              content: btoa(unescape(encodeURIComponent(placeholderContent))),
+              branch: 'main'
+            });
+          }
           
-          console.log(`使用SHA创建文件: ${latestCommitSha}`);
-          await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
-        } else {
-          // 没有SHA，使用createFile（不需要SHA参数）
-          console.log('没有SHA，使用createFile方法');
-          await octokit.rest.repos.createFile({
-            owner: repo.owner,
-            repo: repo.name,
-            path: `${folderPath}/README.md`,
-            message: `创建文件夹: ${folderName}`,
-            content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main'
+          console.log(`成功创建文件夹: ${folderPath}`);
+        } catch (createError) {
+          console.error('创建文件夹失败:', createError);
+          return new Response(JSON.stringify({
+            success: false,
+            error: '创建文件夹失败: ' + createError.message
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
           });
         }
-        
-        console.log(`成功创建文件夹: ${folderPath}`);
         
         // 保存文件夹信息到数据库
         try {
