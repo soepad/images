@@ -558,83 +558,17 @@ export async function onRequest(context) {
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
-        // 尝试获取最新的提交SHA
-        let latestCommitSha = null;
+        // 直接创建文件夹，不使用SHA参数
         try {
-          // 直接获取最新的提交
-          const commits = await octokit.rest.repos.listCommits({
+          console.log(`开始创建文件夹: ${folderPath}`);
+          await octokit.rest.repos.createFile({
             owner: repo.owner,
             repo: repo.name,
-            per_page: 1
+            path: `${folderPath}/README.md`,
+            message: `创建文件夹: ${folderName}`,
+            content: btoa(unescape(encodeURIComponent(placeholderContent))),
+            branch: 'main'
           });
-          
-          if (commits.data.length > 0) {
-            latestCommitSha = commits.data[0].sha;
-            console.log(`获取到最新提交SHA: ${latestCommitSha}`);
-          }
-        } catch (shaError) {
-          console.log('无法获取最新提交SHA:', shaError.message);
-        }
-        
-        // 如果没有SHA，先创建一个初始文件来获取SHA
-        if (!latestCommitSha) {
-          console.log('没有SHA，先创建初始文件...');
-          try {
-            // 创建一个初始文件，使用createFile避免SHA参数问题
-            await octokit.rest.repos.createFile({
-              owner: repo.owner,
-              repo: repo.name,
-              path: 'public/.gitkeep',
-              message: '初始化仓库',
-              content: btoa(unescape(encodeURIComponent(''))),
-              branch: 'main'
-            });
-            
-            // 获取新创建的提交的SHA
-            const commits = await octokit.rest.repos.listCommits({
-              owner: repo.owner,
-              repo: repo.name,
-              per_page: 1
-            });
-            
-            if (commits.data.length > 0) {
-              latestCommitSha = commits.data[0].sha;
-              console.log(`初始化后获取SHA: ${latestCommitSha}`);
-            }
-          } catch (initError) {
-            console.log('初始化失败:', initError.message);
-            // 继续尝试不使用SHA
-          }
-        }
-        
-        // 现在创建文件夹
-        try {
-          if (latestCommitSha) {
-            // 有SHA，使用createOrUpdateFileContents
-            const createFileParams = {
-              owner: repo.owner,
-              repo: repo.name,
-              path: `${folderPath}/README.md`,
-              message: `创建文件夹: ${folderName}`,
-              content: btoa(unescape(encodeURIComponent(placeholderContent))),
-              branch: 'main',
-              sha: latestCommitSha
-            };
-            
-            console.log(`使用SHA创建文件: ${latestCommitSha}`);
-            await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
-          } else {
-            // 没有SHA，使用createFile（不需要SHA参数）
-            console.log('没有SHA，使用createFile方法');
-            await octokit.rest.repos.createFile({
-              owner: repo.owner,
-              repo: repo.name,
-              path: `${folderPath}/README.md`,
-              message: `创建文件夹: ${folderName}`,
-              content: btoa(unescape(encodeURIComponent(placeholderContent))),
-              branch: 'main'
-            });
-          }
           
           console.log(`成功创建文件夹: ${folderPath}`);
         } catch (createError) {
