@@ -165,7 +165,7 @@ export async function createNewRepository(env, currentRepoName) {
     // 检查仓库是否已存在
     let repoExists = false;
     try {
-      const existingRepo = await octokit.repos.get({
+      const existingRepo = await octokit.rest.repos.get({
         owner: env.GITHUB_OWNER,
         repo: newRepoName
       });
@@ -187,27 +187,24 @@ export async function createNewRepository(env, currentRepoName) {
         console.log(`尝试创建组织仓库: ${env.GITHUB_OWNER}/${newRepoName}`);
         
         // 尝试创建组织仓库
-        await octokit.repos.createInOrg({
+        await octokit.rest.repos.createInOrg({
           org: env.GITHUB_OWNER,
           name: newRepoName,
           auto_init: true,
           private: true,
-          description: `图片存储仓库 #${newRepoNumber}`
+          description: `图片存储仓库`
         });
         
         console.log(`成功创建组织仓库: ${env.GITHUB_OWNER}/${newRepoName}`);
       } catch (orgError) {
-        // 如果创建组织仓库失败，尝试创建个人仓库
         console.log(`创建组织仓库失败，尝试创建个人仓库: ${env.GITHUB_OWNER}/${newRepoName}`, orgError.message);
         
-        await octokit.repos.createForAuthenticatedUser({
+        await octokit.rest.repos.createForAuthenticatedUser({
           name: newRepoName,
-          auto_init: true,
+          description: `图片存储仓库`,
           private: true,
-          description: `图片存储仓库 #${newRepoNumber}`
+          auto_init: true
         });
-        
-        console.log(`成功创建个人仓库: ${env.GITHUB_OWNER}/${newRepoName}`);
       }
       
       // 等待几秒钟，确保仓库初始化完成
@@ -221,51 +218,49 @@ export async function createNewRepository(env, currentRepoName) {
       
       // 检查public目录是否存在
       try {
-        await octokit.repos.getContent({
+        await octokit.rest.repos.getContent({
           owner: env.GITHUB_OWNER,
           repo: newRepoName,
           path: 'public'
         });
+        
         console.log('public目录已存在');
       } catch (error) {
         if (error.status === 404) {
           // 创建public目录
           console.log('创建public目录');
-          await octokit.repos.createOrUpdateFileContents({
+          await octokit.rest.repos.createOrUpdateFileContents({
             owner: env.GITHUB_OWNER,
             repo: newRepoName,
             path: 'public/.gitkeep',
-            message: '创建public目录',
+            message: 'Create public directory',
             content: btoa(''),
             branch: 'main'
           });
-        } else {
-          console.error('检查public目录时出错:', error);
         }
       }
       
       // 检查public/images目录是否存在
       try {
-        await octokit.repos.getContent({
+        await octokit.rest.repos.getContent({
           owner: env.GITHUB_OWNER,
           repo: newRepoName,
           path: 'public/images'
         });
+        
         console.log('public/images目录已存在');
       } catch (error) {
         if (error.status === 404) {
           // 创建public/images目录
           console.log('创建public/images目录');
-          await octokit.repos.createOrUpdateFileContents({
+          await octokit.rest.repos.createOrUpdateFileContents({
             owner: env.GITHUB_OWNER,
             repo: newRepoName,
             path: 'public/images/.gitkeep',
-            message: '创建images目录',
+            message: 'Create public/images directory',
             content: btoa(''),
             branch: 'main'
           });
-        } else {
-          console.error('检查public/images目录时出错:', error);
         }
       }
       
