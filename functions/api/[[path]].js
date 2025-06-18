@@ -1858,7 +1858,7 @@ export async function onRequest(context) {
         // 检查仓库是否已存在
         let repoExists = false;
         try {
-          const existingRepo = await octokit.rest.repos.get({
+          const existingRepo = await octokit.repos.get({
             owner: env.GITHUB_OWNER,
             repo: repoName
           });
@@ -1880,7 +1880,7 @@ export async function onRequest(context) {
             console.log(`尝试创建组织仓库: ${env.GITHUB_OWNER}/${repoName}`);
             
             // 尝试创建组织仓库
-            const repoResponse = await octokit.rest.repos.createInOrg({
+            const repoResponse = await octokit.repos.createInOrg({
               org: env.GITHUB_OWNER,
               name: repoName,
               auto_init: true,
@@ -1921,7 +1921,7 @@ export async function onRequest(context) {
             console.log(`创建组织仓库失败，尝试创建个人仓库: ${orgError.message}`);
             
             // 如果创建组织仓库失败，尝试创建个人仓库
-            const repoResponse = await octokit.rest.repos.createForAuthenticatedUser({
+            const repoResponse = await octokit.repos.createForAuthenticatedUser({
               name: repoName,
               description: `图片存储仓库`,
               private: true,
@@ -2452,7 +2452,7 @@ export async function onRequest(context) {
         
         // 检查文件夹是否已存在
         try {
-          await octokit.rest.repos.getContent({
+          await octokit.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
             path: folderPath
@@ -2472,7 +2472,7 @@ export async function onRequest(context) {
         
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
-          await octokit.rest.repos.createFile({
+          await octokit.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
