@@ -638,6 +638,74 @@ export async function onRequest(context) {
             }
           }
           
+          // 如果仍然没有SHA，尝试获取public目录的SHA
+          if (!latestCommitSha) {
+            try {
+              const publicContent = await octokit.rest.repos.getContent({
+                owner: repo.owner,
+                repo: repo.name,
+                path: 'public'
+              });
+              
+              if (Array.isArray(publicContent.data) && publicContent.data.length > 0) {
+                // 获取public目录的SHA
+                const commits = await octokit.rest.repos.listCommits({
+                  owner: repo.owner,
+                  repo: repo.name,
+                  per_page: 1
+                });
+                
+                if (commits.data.length > 0) {
+                  latestCommitSha = commits.data[0].sha;
+                  console.log(`从public目录获取SHA: ${latestCommitSha}`);
+                }
+              }
+            } catch (publicError) {
+              console.log('无法获取public目录内容:', publicError.message);
+            }
+          }
+          
+          // 如果仍然没有SHA，说明这是一个完全空的仓库，我们需要先创建public目录
+          if (!latestCommitSha) {
+            console.log('创建public目录...');
+            
+            await octokit.rest.repos.createOrUpdateFileContents({
+              owner: repo.owner,
+              repo: repo.name,
+              path: 'public/.gitkeep',
+              message: '创建public目录',
+              content: btoa(unescape(encodeURIComponent(''))),
+              branch: 'main'
+            });
+            
+            // 获取新创建的提交的SHA
+            const commits = await octokit.rest.repos.listCommits({
+              owner: repo.owner,
+              repo: repo.name,
+              per_page: 1
+            });
+            
+            if (commits.data.length > 0) {
+              latestCommitSha = commits.data[0].sha;
+              console.log(`创建public目录后获取SHA: ${latestCommitSha}`);
+            }
+          }
+          
+          // 确保我们有SHA
+          if (!latestCommitSha) {
+            console.error('无法获取有效的SHA');
+            return new Response(JSON.stringify({
+              success: false,
+              error: '无法获取仓库状态，请检查仓库权限'
+            }), {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders
+              }
+            });
+          }
+          
           // 现在创建文件夹
           const createFileParams = {
             owner: repo.owner,
