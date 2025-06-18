@@ -2260,25 +2260,15 @@ function formatDate(timestamp) {
             return '无效日期';
         }
         
-        // 转换为北京时间 (UTC+8)
-        // 由于数据库可能已经存储了北京时间，我们需要判断一下
-        // 如果timestamp本身包含+08:00这样的时区标识，则不需要再调整
-        let beijingDate;
-        if (typeof timestamp === 'string' && (timestamp.includes('+08:00') || timestamp.includes('+0800'))) {
-            beijingDate = date; // 已经是北京时间
-        } else {
-            beijingDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-        }
-        
-        // 使用toLocaleString格式化日期，采用中文格式
-        return beijingDate.toLocaleString('zh-CN', {
+        // 使用toLocaleString格式化日期，采用中文格式和北京时间
+        return date.toLocaleString('zh-CN', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
             hour12: false,
-            timeZone: 'UTC' // 由于我们已经手动调整了时间，所以这里使用UTC避免再次调整
+            timeZone: 'Asia/Shanghai' // 使用北京时间时区
         });
     } catch (error) {
         console.error('日期格式化错误:', error, timestamp);
@@ -2348,7 +2338,7 @@ function showGlobalDropdown(items, triggerElement, onItemClick) {
             e.preventDefault();
             e.stopPropagation();
             if (onItemClick) {
-                onItemClick(item.format, item.url, item.filename);
+                onItemClick(item);
             }
         });
         
@@ -3722,7 +3712,9 @@ function showFolderMenu(event, folderId) {
     ];
     
     showGlobalDropdown(menuItems, event.target, (item) => {
-        item.action();
+        if (item && item.action) {
+            item.action();
+        }
     });
 }
 
