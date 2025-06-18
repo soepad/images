@@ -1144,15 +1144,7 @@ function createRepositoryCard(repo) {
         </div>
         <div class="repo-actions">
             <div class="actions-container">
-                <button class="btn btn-sm btn-outline-primary btn-icon sync-size-btn" data-repo-id="${repo.id}">
-                    <i class="fas fa-arrow-repeat"></i> 同步大小
-                </button>
-                
-                <button class="btn btn-sm btn-outline-info btn-icon sync-count-btn" data-repo-id="${repo.id}">
-                    <i class="fas fa-hash"></i> 同步文件数
-                </button>
-                
-                <button class="btn btn-sm btn-success create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" style="background-color: #28a745 !important; border-color: #28a745 !important; color: white !important;">
+                <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" disabled style="background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 0.6; cursor: not-allowed;">
                     <i class="fas fa-folder-plus"></i> 新建文件夹
                 </button>
                 
@@ -1177,33 +1169,7 @@ function createRepositoryCard(repo) {
         </div>
     `;
     
-    // 添加事件监听器
-    const syncSizeBtn = card.querySelector('.sync-size-btn');
-    if (syncSizeBtn) {
-        syncSizeBtn.addEventListener('click', async (e) => {
-            const repoId = e.currentTarget.dataset.repoId;
-            await syncRepositorySize(repoId, e.currentTarget);
-        });
-    }
-    
-    const syncCountBtn = card.querySelector('.sync-count-btn');
-    if (syncCountBtn) {
-        syncCountBtn.addEventListener('click', async (e) => {
-            const repoId = e.currentTarget.dataset.repoId;
-            await syncRepositoryFileCount(repoId, e.currentTarget);
-        });
-    }
-    
-    const createFolderBtn = card.querySelector('.create-folder-btn');
-    if (createFolderBtn) {
-        createFolderBtn.addEventListener('click', (e) => {
-            const repoId = e.currentTarget.dataset.repoId;
-            const repoName = e.currentTarget.dataset.repoName;
-            const repoOwner = e.currentTarget.dataset.repoOwner;
-            showCreateFolderModal(repoId, repoName, repoOwner);
-        });
-    }
-    
+    // 添加事件监听器 - 只保留状态按钮的事件监听器
     const statusBtns = card.querySelectorAll('.status-btn');
     statusBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
