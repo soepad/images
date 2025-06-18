@@ -546,7 +546,7 @@ export async function onRequest(context) {
       const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
       
       try {
-        // 尝试获取main分支的最新提交SHA，如果失败则使用null（让GitHub自动处理）
+        // 尝试获取main分支的最新提交SHA
         let latestCommitSha = null;
         try {
           const branchInfo = await octokit.rest.repos.getBranch({
@@ -557,26 +557,97 @@ export async function onRequest(context) {
           latestCommitSha = branchInfo.data.commit.sha;
           console.log(`获取到main分支SHA: ${latestCommitSha}`);
         } catch (branchError) {
-          console.log('无法获取main分支信息，将使用null SHA（适用于空仓库）:', branchError.message);
-          latestCommitSha = null;
+          console.log('无法获取main分支信息，尝试获取默认分支:', branchError.message);
+          
+          // 如果无法获取main分支，尝试获取仓库的默认分支
+          try {
+            const repoInfo = await octokit.rest.repos.get({
+              owner: repo.owner,
+              repo: repo.name
+            });
+            
+            const defaultBranch = repoInfo.data.default_branch;
+            console.log(`仓库默认分支: ${defaultBranch}`);
+            
+            if (defaultBranch && defaultBranch !== 'main') {
+              const defaultBranchInfo = await octokit.rest.repos.getBranch({
+                owner: repo.owner,
+                repo: repo.name,
+                branch: defaultBranch
+              });
+              latestCommitSha = defaultBranchInfo.data.commit.sha;
+              console.log(`获取到默认分支SHA: ${latestCommitSha}`);
+            }
+          } catch (repoError) {
+            console.log('无法获取仓库信息:', repoError.message);
+          }
         }
         
-        // 准备创建文件的参数
-        const createFileParams = {
+        // 如果仍然没有SHA，尝试获取仓库的根目录内容来获取SHA
+        if (!latestCommitSha) {
+          try {
+            const rootContent = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: ''
+            });
+            
+            // 如果根目录存在内容，使用其SHA
+            if (Array.isArray(rootContent.data) && rootContent.data.length > 0) {
+              // 获取最新的提交SHA
+              const commits = await octokit.rest.repos.listCommits({
+                owner: repo.owner,
+                repo: repo.name,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                latestCommitSha = commits.data[0].sha;
+                console.log(`从提交历史获取SHA: ${latestCommitSha}`);
+              }
+            }
+          } catch (contentError) {
+            console.log('无法获取根目录内容:', contentError.message);
+          }
+        }
+        
+        // 如果仍然没有SHA，说明这是一个完全空的仓库，我们需要先初始化它
+        if (!latestCommitSha) {
+          console.log('检测到空仓库，尝试初始化...');
+          
+          // 创建一个初始提交
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner: repo.owner,
+            repo: repo.name,
+            path: 'README.md',
+            message: '初始化仓库',
+            content: btoa(unescape(encodeURIComponent('# 图片存储仓库\n\n此仓库用于存储图片文件。'))),
+            branch: 'main'
+          });
+          
+          // 现在获取新创建的提交的SHA
+          const commits = await octokit.rest.repos.listCommits({
+            owner: repo.owner,
+            repo: repo.name,
+            per_page: 1
+          });
+          
+          if (commits.data.length > 0) {
+            latestCommitSha = commits.data[0].sha;
+            console.log(`初始化后获取SHA: ${latestCommitSha}`);
+          }
+        }
+        
+        // 现在创建文件夹
+        await octokit.rest.repos.createOrUpdateFileContents({
           owner: repo.owner,
           repo: repo.name,
           path: `${folderPath}/README.md`,
           message: `创建文件夹: ${folderName}`,
           content: btoa(unescape(encodeURIComponent(placeholderContent))),
-          branch: 'main'
-        };
-        
-        // 只有在有SHA的情况下才添加sha参数
-        if (latestCommitSha) {
-          createFileParams.sha = latestCommitSha;
-        }
-        
-        await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
+          branch: 'main',
+          sha: latestCommitSha
+        });
         
         console.log(`成功创建文件夹: ${folderPath}`);
         
