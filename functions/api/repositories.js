@@ -464,12 +464,12 @@ export async function onRequest(context) {
         });
       }
       
-      // 验证文件夹名称格式
-      const folderNameRegex = /^[a-zA-Z0-9_-]+$/;
+      // 验证文件夹名称格式 - 允许中文字符和其他Unicode字符
+      const folderNameRegex = /^[\u4e00-\u9fa5a-zA-Z0-9_-]+$/;
       if (!folderNameRegex.test(folderName.trim())) {
         return new Response(JSON.stringify({
           success: false,
-          error: '文件夹名称只能包含字母、数字、下划线和连字符'
+          error: '文件夹名称只能包含中文、字母、数字、下划线和连字符'
         }), {
           status: 400,
           headers: {
@@ -675,11 +675,11 @@ export async function onRequest(context) {
           }
         });
         
-      } catch (createError) {
-        console.error('创建文件夹失败:', createError);
+      } catch (error) {
+        console.error('创建文件夹失败:', error);
         return new Response(JSON.stringify({
           success: false,
-          error: '创建文件夹失败: ' + createError.message
+          error: '创建文件夹失败: ' + error.message
         }), {
           status: 500,
           headers: {
@@ -691,9 +691,16 @@ export async function onRequest(context) {
       
     } catch (error) {
       console.error('处理创建文件夹请求失败:', error);
+      console.error('错误详情:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause
+      });
       return new Response(JSON.stringify({
         success: false,
-        error: '处理创建文件夹请求失败: ' + error.message
+        error: '处理创建文件夹请求失败: ' + error.message,
+        details: error.stack
       }), {
         status: 500,
         headers: {
