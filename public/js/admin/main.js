@@ -3136,9 +3136,10 @@ async function syncRepositoryFileCount(repoId, button) {
 
 // 更新仓库状态
 async function updateRepositoryStatus(repoId, status, button) {
+    let originalContent = '';
     try {
         // 显示加载状态
-        const originalContent = button.innerHTML;
+        originalContent = button.innerHTML;
         button.disabled = true;
         button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 更新中...`;
         
@@ -3165,8 +3166,10 @@ async function updateRepositoryStatus(repoId, status, button) {
         showNotification(`更新仓库状态失败: ${error.message}`, 'error');
         
         // 恢复按钮状态
-        button.disabled = false;
-        button.innerHTML = originalContent;
+        if (originalContent) {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
     }
 }
 
