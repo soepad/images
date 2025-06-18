@@ -136,8 +136,6 @@ async function syncRepositorySize(env, repoId) {
  * @returns {Promise<Response>} - 响应对象
  */
 export async function onRequest(context) {
-  console.log('=== repositories.js 被调用 ===');
-  
   try {
     const { request, env } = context;
     const url = new URL(request.url);
