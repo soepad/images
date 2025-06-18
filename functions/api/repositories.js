@@ -83,7 +83,7 @@ async function syncRepositorySize(env, repoId) {
       UPDATE repositories 
       SET size_estimate = ?, 
           file_count = ?,
-          updated_at = CURRENT_TIMESTAMP 
+          updated_at = datetime('now', '+8 hours')
       WHERE id = ?
     `).bind(actualSize, fileCount, repoId).run();
     
@@ -103,7 +103,7 @@ async function syncRepositorySize(env, repoId) {
     // 如果达到或超过阈值，更新状态
     if (actualSize >= repoSizeThreshold && repo.status !== 'full') {
       await env.DB.prepare(`
-        UPDATE repositories SET status = 'full', updated_at = CURRENT_TIMESTAMP
+        UPDATE repositories SET status = 'full', updated_at = datetime('now', '+8 hours')
         WHERE id = ?
       `).bind(repoId).run();
       
@@ -111,7 +111,7 @@ async function syncRepositorySize(env, repoId) {
     } else if (actualSize < repoSizeThreshold && repo.status === 'full') {
       // 如果之前标记为满但现在未满，恢复状态
       await env.DB.prepare(`
-        UPDATE repositories SET status = 'active', updated_at = CURRENT_TIMESTAMP
+        UPDATE repositories SET status = 'active', updated_at = datetime('now', '+8 hours')
         WHERE id = ?
       `).bind(repoId).run();
       
@@ -570,8 +570,8 @@ export async function onRequest(context) {
         // 保存文件夹信息到数据库
         try {
           await env.DB.prepare(`
-            INSERT INTO folders (name, path, repository_id, created_at)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO folders (name, path, repository_id, created_at, updated_at)
+            VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
           `).bind(folderName.trim(), folderPath, repoId).run();
           
           console.log(`文件夹信息已保存到数据库: ${folderName}`);
@@ -670,7 +670,7 @@ export async function onRequest(context) {
       // 更新状态
       await env.DB.prepare(`
         UPDATE repositories 
-        SET status = ?, updated_at = CURRENT_TIMESTAMP 
+        SET status = ?, updated_at = datetime('now', '+8 hours')
         WHERE id = ?
       `).bind(status, repoId).run();
       
@@ -798,13 +798,13 @@ export async function onRequest(context) {
       
       // 先将所有仓库设置为非活跃
       await env.DB.prepare(`
-        UPDATE repositories SET status = 'inactive', updated_at = CURRENT_TIMESTAMP
+        UPDATE repositories SET status = 'inactive', updated_at = datetime('now', '+8 hours')
         WHERE status = 'active'
       `).run();
       
       // 将指定仓库设置为活跃
       await env.DB.prepare(`
-        UPDATE repositories SET status = 'active', updated_at = CURRENT_TIMESTAMP
+        UPDATE repositories SET status = 'active', updated_at = datetime('now', '+8 hours')
         WHERE id = ?
       `).bind(repoId).run();
       
