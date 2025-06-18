@@ -2447,6 +2447,13 @@ export async function onRequest(context) {
           auth: repo.token || env.GITHUB_TOKEN
         });
         
+        console.log('Octokit实例创建成功:', {
+          hasOctokit: !!octokit,
+          hasRepos: !!octokit.repos,
+          reposKeys: octokit.repos ? Object.keys(octokit.repos) : 'undefined',
+          hasGetContent: octokit.repos ? !!octokit.repos.getContent : 'undefined'
+        });
+        
         // 创建文件夹路径
         const folderPath = `public/${folderName.trim()}`;
         
