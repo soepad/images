@@ -639,15 +639,24 @@ export async function onRequest(context) {
           }
           
           // 现在创建文件夹
-          await octokit.rest.repos.createOrUpdateFileContents({
+          const createFileParams = {
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
             message: `创建文件夹: ${folderName}`,
             content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main',
-            sha: latestCommitSha
-          });
+            branch: 'main'
+          };
+          
+          // 只有在有有效SHA时才添加sha参数
+          if (latestCommitSha) {
+            createFileParams.sha = latestCommitSha;
+            console.log(`使用SHA创建文件: ${latestCommitSha}`);
+          } else {
+            console.log('没有SHA，让GitHub自动处理');
+          }
+          
+          await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
           
           console.log(`成功创建文件夹: ${folderPath}`);
           
@@ -679,12 +688,17 @@ export async function onRequest(context) {
               });
             }
             
-            await env.DB.prepare(`
+            // 确保repoId是数字类型
+            const numericRepoId = parseInt(repoId, 10);
+            console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
+            
+            const insertResult = await env.DB.prepare(`
               INSERT INTO folders (name, path, repository_id, created_at, updated_at)
               VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
-            `).bind(folderName.trim(), folderPath, repoId).run();
+            `).bind(folderName.trim(), folderPath, numericRepoId).run();
             
-            console.log(`文件夹信息已保存到数据库: ${folderName}`);
+            console.log(`插入结果:`, insertResult);
+            console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
           } catch (dbError) {
             console.error('保存文件夹信息到数据库失败:', dbError);
             console.error('数据库错误详情:', {
