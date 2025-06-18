@@ -1775,7 +1775,7 @@ export async function onRequest(context) {
         const { baseName } = requestData;
         
         if (!baseName || !baseName.trim()) {
-          return jsonResponse({ error: '仓库基础名称不能为空' }, 400);
+          return jsonResponse({ error: '仓库名称不能为空' }, 400);
         }
         
         // 验证仓库名称格式
@@ -1786,7 +1786,7 @@ export async function onRequest(context) {
           }, 400);
         }
         
-        console.log(`创建仓库请求: 基础名称=${baseName}`);
+        console.log(`创建仓库请求: 仓库名称=${baseName}`);
         
         // 检查GitHub相关环境变量
         if (!env.GITHUB_TOKEN) {
@@ -1801,33 +1801,10 @@ export async function onRequest(context) {
           }, 500);
         }
         
-        // 获取已存在的同名仓库，找出最大序号
-        let maxNumber = 0;
-        try {
-          const existingRepos = await env.DB.prepare(`
-            SELECT name FROM repositories WHERE name LIKE ?
-          `).bind(`${baseName.trim()}-%`).all();
-          
-          // 找出最大序号
-          for (const repo of existingRepos.results || []) {
-            const match = repo.name.match(/-(\d+)$/);
-            if (match) {
-              const num = parseInt(match[1]);
-              if (num > maxNumber) {
-                maxNumber = num;
-              }
-            }
-          }
-        } catch (error) {
-          console.warn('查询已存在仓库失败，使用默认序号:', error);
-        }
+        // 直接使用用户输入的仓库名称，不添加序号
+        const repoName = baseName.trim();
         
-        // 生成新序号，使用三位数字格式(001, 002, ...)
-        const newRepoNumber = maxNumber + 1;
-        const paddedNumber = String(newRepoNumber).padStart(3, '0');
-        const repoName = `${baseName.trim()}-${paddedNumber}`;
-        
-        console.log(`尝试创建新仓库: ${repoName} (序号: ${paddedNumber})`);
+        console.log(`尝试创建新仓库: ${repoName}`);
         
         // 创建Octokit实例
         const octokit = new Octokit({
@@ -1864,7 +1841,7 @@ export async function onRequest(context) {
               name: repoName,
               auto_init: true,
               private: true,
-              description: `图片存储仓库 #${newRepoNumber}`
+              description: `图片存储仓库`
             });
             
             console.log(`成功创建组织仓库: ${env.GITHUB_OWNER}/${repoName}`);
@@ -1902,7 +1879,7 @@ export async function onRequest(context) {
             // 如果创建组织仓库失败，尝试创建个人仓库
             const repoResponse = await octokit.rest.repos.createForAuthenticatedUser({
               name: repoName,
-              description: `图片存储仓库 #${newRepoNumber}`,
+              description: `图片存储仓库`,
               private: true,
               auto_init: true
             });
