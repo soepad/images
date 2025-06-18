@@ -82,10 +82,9 @@ async function syncRepositorySize(env, repoId) {
     await env.DB.prepare(`
       UPDATE repositories 
       SET size_estimate = ?, 
-          file_count = ?,
           updated_at = datetime('now', '+8 hours')
       WHERE id = ?
-    `).bind(actualSize, fileCount, repoId).run();
+    `).bind(actualSize, repoId).run();
     
     // 检查是否达到阈值
     const thresholdSetting = await env.DB.prepare(`
