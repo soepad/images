@@ -195,6 +195,21 @@ export async function onRequest(context) {
     // 添加调试模式检查
     const isDebugMode = request.headers.get('X-Debug-Mode') === 'true' || url.searchParams.has('debug');
     
+    // 特殊处理：如果路径以repositories开头，应该由repositories.js处理
+    if (path.startsWith('repositories/')) {
+      console.log('检测到repositories路径，应该由repositories.js处理:', path);
+      return new Response(JSON.stringify({
+        error: 'Route Conflict',
+        message: `Path ${path} should be handled by repositories.js, not [[path]].js`
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+
     // 处理管理员登出请求
     if (path.toLowerCase() === 'admin/logout') {
       try {
