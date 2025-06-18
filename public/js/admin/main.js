@@ -3237,6 +3237,33 @@ function showCreateFolderModal(repoId, repoName, repoOwner) {
         setTimeout(() => {
             if (folderNameInput) {
                 folderNameInput.focus();
+                
+                // 添加回车键事件监听器
+                const handleEnterKey = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        console.log('回车键被按下，触发创建文件夹');
+                        
+                        const folderName = folderNameInput.value.trim();
+                        if (!folderName) {
+                            showNotification('请输入文件夹名称', 'error');
+                            return;
+                        }
+                        
+                        const repoId = confirmBtn.dataset.repoId;
+                        console.log('仓库ID:', repoId, '文件夹名称:', folderName);
+                        if (repoId) {
+                            createFolder(repoId, folderName);
+                        } else {
+                            showNotification('仓库信息丢失，请重试', 'error');
+                        }
+                    }
+                };
+                
+                // 移除之前的事件监听器（如果存在）
+                folderNameInput.removeEventListener('keydown', handleEnterKey);
+                // 添加新的事件监听器
+                folderNameInput.addEventListener('keydown', handleEnterKey);
             }
             
             // 确保创建按钮事件正确绑定
