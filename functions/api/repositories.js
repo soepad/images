@@ -733,13 +733,22 @@ export async function onRequest(context) {
           const numericRepoId = parseInt(repoId, 10);
           console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
           
-          const insertResult = await env.DB.prepare(`
-            INSERT INTO folders (name, path, repository_id, created_at, updated_at)
-            VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
-          `).bind(folderName.trim(), folderPath, numericRepoId).run();
+          // 检查文件夹是否已存在
+          const existingFolder = await env.DB.prepare(`
+            SELECT id FROM folders WHERE path = ?
+          `).bind(folderPath).first();
           
-          console.log(`插入结果:`, insertResult);
-          console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+          if (!existingFolder) {
+            const insertResult = await env.DB.prepare(`
+              INSERT INTO folders (name, path, repository_id, created_at, updated_at)
+              VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
+            `).bind(folderName.trim(), folderPath, numericRepoId).run();
+            
+            console.log(`插入结果:`, insertResult);
+            console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+          } else {
+            console.log('文件夹已存在于数据库中，跳过插入');
+          }
         } catch (dbError) {
           console.error('保存文件夹信息到数据库失败:', dbError);
           console.error('数据库错误详情:', {
