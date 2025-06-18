@@ -3684,9 +3684,163 @@ function createFolderCard(folder) {
 }
 
 function openFolder(folderId, folderName) {
-    // 这里将来会实现打开文件夹显示文件列表的功能
     console.log('打开文件夹:', folderId, folderName);
-    showNotification(`打开文件夹: ${folderName}`, 'info');
+    
+    // 显示加载状态
+    showNotification('正在加载文件夹内容...', 'info');
+    
+    // 调用API获取文件夹内容
+    safeApiCall(`/api/folders/${folderId}/files`, {
+        method: 'GET',
+        credentials: 'include'
+    }).then(response => {
+        if (response.success) {
+            const { folder, files } = response.data;
+            displayFolderContents(folder, files);
+        } else {
+            throw new Error(response.error || '获取文件夹内容失败');
+        }
+    }).catch(error => {
+        console.error('获取文件夹内容失败:', error);
+        showNotification(`获取文件夹内容失败: ${error.message}`, 'error');
+    });
+}
+
+// 显示文件夹内容
+function displayFolderContents(folder, files) {
+    // 创建模态框显示文件夹内容
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'folderContentsModal';
+    
+    const filesList = files.length > 0 ? 
+        files.map(file => `
+            <div class="file-item" data-file-id="${file.id}">
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-name">${file.filename}</div>
+                        <div class="file-meta">
+                            <span class="file-size">${formatFileSize(file.size)}</span>
+                            <span class="file-repo">${file.repository_name}</span>
+                            <span class="file-date">${formatDate(file.created_at)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyFileUrl('${file.github_path}')">
+                        <i class="fas fa-copy"></i> 复制链接
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+        `).join('') : 
+        `<div class="empty-folder">
+            <i class="fas fa-folder-open"></i>
+            <h3>当前文件夹暂无文件</h3>
+            <p>请上传文件到此文件夹</p>
+            <button class="btn btn-primary" onclick="uploadToFolder('${folder.name}')">
+                <i class="fas fa-upload"></i> 上传文件
+            </button>
+        </div>`;
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>文件夹: ${folder.name}</h3>
+                <button class="close-btn" onclick="closeFolderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="folder-info-bar">
+                    <span class="folder-path">${folder.path}</span>
+                    <span class="file-count">${files.length} 个文件</span>
+                </div>
+                <div class="files-container">
+                    ${filesList}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+    
+    // 添加关闭事件
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeFolderModal();
+        }
+    });
+    
+    // ESC键关闭
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeFolderModal();
+        }
+    });
+}
+
+// 关闭文件夹模态框
+function closeFolderModal() {
+    const modal = document.getElementById('folderContentsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.removeChild(modal);
+    }
+}
+
+// 复制文件链接
+function copyFileUrl(filePath) {
+    const url = `${window.location.origin}/${filePath}`;
+    navigator.clipboard.writeText(url).then(() => {
+        showNotification('文件链接已复制到剪贴板', 'success');
+    }).catch(() => {
+        showNotification('复制失败，请手动复制', 'error');
+    });
+}
+
+// 删除文件
+async function deleteFile(fileId) {
+    if (!confirm('确定要删除这个文件吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    try {
+        showNotification('正在删除文件...', 'info');
+        
+        const response = await safeApiCall(`/api/images/${fileId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.success) {
+            showNotification('文件删除成功', 'success');
+            // 刷新当前文件夹内容
+            const modal = document.getElementById('folderContentsModal');
+            if (modal) {
+                const folderId = modal.querySelector('.modal-header h3').textContent.match(/文件夹: (.+)/)[1];
+                // 重新加载文件夹内容
+                openFolder(folderId, folderId);
+            }
+        } else {
+            throw new Error(response.error || '删除文件失败');
+        }
+    } catch (error) {
+        console.error('删除文件失败:', error);
+        showNotification(`删除文件失败: ${error.message}`, 'error');
+    }
+}
+
+// 上传到指定文件夹
+function uploadToFolder(folderName) {
+    showNotification(`准备上传到文件夹: ${folderName}`, 'info');
+    // 这里可以打开上传模态框并设置目标文件夹
+    showUploadModal();
+    // TODO: 在上传时指定目标文件夹
 }
 
 function showFolderMenu(event, folderId) {
@@ -3719,15 +3873,254 @@ function showFolderMenu(event, folderId) {
 }
 
 function renameFolder(folderId) {
-    // 实现重命名文件夹功能
-    console.log('重命名文件夹:', folderId);
-    showNotification('重命名功能待实现', 'info');
+    // 获取文件夹信息
+    safeApiCall('/api/folders', {
+        method: 'GET',
+        credentials: 'include'
+    }).then(response => {
+        if (response.success) {
+            const folder = response.data.find(f => f.id == folderId);
+            if (folder) {
+                showRenameFolderModal(folder);
+            } else {
+                showNotification('文件夹不存在', 'error');
+            }
+        } else {
+            throw new Error(response.error || '获取文件夹信息失败');
+        }
+    }).catch(error => {
+        console.error('获取文件夹信息失败:', error);
+        showNotification(`获取文件夹信息失败: ${error.message}`, 'error');
+    });
+}
+
+// 显示重命名文件夹模态框
+function showRenameFolderModal(folder) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'renameFolderModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>重命名文件夹</h3>
+                <button class="close-btn" onclick="closeRenameModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newFolderName">新文件夹名称</label>
+                    <input type="text" id="newFolderName" class="form-control" value="${folder.name}" placeholder="请输入新的文件夹名称">
+                    <small class="form-text">此操作将在所有仓库中同步重命名该文件夹</small>
+                </div>
+                <div class="warning-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>注意：重命名操作将在所有仓库中同步进行，请确保新名称在所有仓库中都是唯一的。</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRenameModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmRenameFolder(${folder.id})">确认重命名</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+    
+    // 聚焦到输入框
+    setTimeout(() => {
+        const input = document.getElementById('newFolderName');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }, 100);
+    
+    // 添加回车键支持
+    const input = document.getElementById('newFolderName');
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmRenameFolder(folder.id);
+            }
+        });
+    }
+}
+
+// 确认重命名文件夹
+async function confirmRenameFolder(folderId) {
+    const newName = document.getElementById('newFolderName').value.trim();
+    
+    if (!newName) {
+        showNotification('请输入新的文件夹名称', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('正在重命名文件夹...', 'info');
+        
+        const response = await safeApiCall(`/api/folders/${folderId}/rename`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ newName })
+        });
+        
+        if (response.success) {
+            showNotification(response.message, 'success');
+            closeRenameModal();
+            // 刷新文件夹列表
+            await loadFolders();
+            // 刷新控制面板统计
+            await updateDashboardStats();
+        } else {
+            throw new Error(response.error || '重命名文件夹失败');
+        }
+    } catch (error) {
+        console.error('重命名文件夹失败:', error);
+        showNotification(`重命名文件夹失败: ${error.message}`, 'error');
+    }
+}
+
+// 关闭重命名模态框
+function closeRenameModal() {
+    const modal = document.getElementById('renameFolderModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.removeChild(modal);
+    }
 }
 
 function deleteFolder(folderId) {
-    // 实现删除文件夹功能
-    console.log('删除文件夹:', folderId);
-    showNotification('删除功能待实现', 'info');
+    // 获取文件夹信息
+    safeApiCall('/api/folders', {
+        method: 'GET',
+        credentials: 'include'
+    }).then(response => {
+        if (response.success) {
+            const folder = response.data.find(f => f.id == folderId);
+            if (folder) {
+                showDeleteFolderModal(folder);
+            } else {
+                showNotification('文件夹不存在', 'error');
+            }
+        } else {
+            throw new Error(response.error || '获取文件夹信息失败');
+        }
+    }).catch(error => {
+        console.error('获取文件夹信息失败:', error);
+        showNotification(`获取文件夹信息失败: ${error.message}`, 'error');
+    });
+}
+
+// 显示删除文件夹模态框
+function showDeleteFolderModal(folder) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'deleteFolderModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>删除文件夹</h3>
+                <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="danger-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>警告：此操作不可恢复！</h4>
+                    <p>您即将删除文件夹 <strong>"${folder.name}"</strong></p>
+                    <p>此操作将：</p>
+                    <ul>
+                        <li>在所有仓库中删除该文件夹</li>
+                        <li>删除文件夹中的所有文件</li>
+                        <li>从数据库中删除相关记录</li>
+                    </ul>
+                    <p>请确认您要执行此操作。</p>
+                </div>
+                <div class="form-group">
+                    <label for="confirmDelete">请输入文件夹名称以确认删除：</label>
+                    <input type="text" id="confirmDelete" class="form-control" placeholder="${folder.name}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteFolder(${folder.id})" disabled>确认删除</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+    
+    // 添加确认输入验证
+    const input = document.getElementById('confirmDelete');
+    const confirmBtn = modal.querySelector('.btn-danger');
+    
+    if (input && confirmBtn) {
+        input.addEventListener('input', () => {
+            confirmBtn.disabled = input.value !== folder.name;
+        });
+        
+        // 添加回车键支持
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value === folder.name) {
+                e.preventDefault();
+                confirmDeleteFolder(folder.id);
+            }
+        });
+    }
+    
+    // 聚焦到输入框
+    setTimeout(() => {
+        if (input) {
+            input.focus();
+        }
+    }, 100);
+}
+
+// 确认删除文件夹
+async function confirmDeleteFolder(folderId) {
+    const confirmText = document.getElementById('confirmDelete').value;
+    
+    if (confirmText !== document.querySelector('#deleteFolderModal .danger-message strong').textContent.replace(/"/g, '')) {
+        showNotification('确认文本不匹配', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('正在删除文件夹...', 'info');
+        
+        const response = await safeApiCall(`/api/folders/${folderId}/delete`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.success) {
+            showNotification(response.message, 'success');
+            closeDeleteModal();
+            // 刷新文件夹列表
+            await loadFolders();
+            // 刷新控制面板统计
+            await updateDashboardStats();
+        } else {
+            throw new Error(response.error || '删除文件夹失败');
+        }
+    } catch (error) {
+        console.error('删除文件夹失败:', error);
+        showNotification(`删除文件夹失败: ${error.message}`, 'error');
+    }
+}
+
+// 关闭删除模态框
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteFolderModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.removeChild(modal);
+    }
 }
 
 // 修改控制面板统计信息更新函数，支持文件夹统计
