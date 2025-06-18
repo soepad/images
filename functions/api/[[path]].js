@@ -2147,6 +2147,398 @@ export async function onRequest(context) {
       }
     }
 
+    // 获取文件夹内的文件列表
+    if (path.match(/^folders\/(\d+)\/files$/) && request.method === 'GET') {
+      try {
+        console.log('处理获取文件夹文件列表请求');
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取文件夹ID
+        const folderId = parseInt(path.match(/^folders\/(\d+)\/files$/)[1], 10);
+        if (isNaN(folderId)) { 
+          return jsonResponse({ error: '无效的文件夹ID' }, 400); 
+        }
+
+        // 获取文件夹信息
+        const folder = await env.DB.prepare(`
+          SELECT * FROM folders WHERE id = ?
+        `).bind(folderId).first();
+        
+        if (!folder) {
+          return jsonResponse({ error: '文件夹不存在' }, 404);
+        }
+
+        // 获取该文件夹下的所有文件（从所有仓库中查找）
+        const files = await env.DB.prepare(`
+          SELECT 
+            i.id,
+            i.filename,
+            i.github_path,
+            i.size,
+            i.created_at,
+            i.updated_at,
+            r.name as repository_name,
+            r.owner as repository_owner
+          FROM images i
+          JOIN repositories r ON i.repository_id = r.id
+          WHERE i.github_path LIKE ?
+          ORDER BY i.created_at DESC
+        `).bind(`${folder.path}/%`).all();
+        
+        console.log(`找到 ${files.results.length} 个文件`);
+        
+        return jsonResponse({
+          success: true,
+          data: {
+            folder: folder,
+            files: files.results
+          }
+        });
+        
+      } catch (error) {
+        console.error('获取文件夹文件列表失败:', error);
+        return jsonResponse({ 
+          error: '获取文件夹文件列表失败: ' + error.message 
+        }, 500);
+      }
+    }
+
+    // 重命名文件夹（在所有仓库中同步）
+    if (path.match(/^folders\/(\d+)\/rename$/) && request.method === 'PUT') {
+      try {
+        console.log('处理重命名文件夹请求');
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取文件夹ID
+        const folderId = parseInt(path.match(/^folders\/(\d+)\/rename$/)[1], 10);
+        if (isNaN(folderId)) { 
+          return jsonResponse({ error: '无效的文件夹ID' }, 400); 
+        }
+
+        // 解析请求体
+        const requestData = await request.json();
+        const { newName } = requestData;
+        
+        if (!newName || !newName.trim()) {
+          return jsonResponse({ error: '新文件夹名称不能为空' }, 400);
+        }
+        
+        // 验证文件夹名称格式
+        const invalidChars = /[<>:"/\\|?*\x00-\x1F]/g;
+        if (invalidChars.test(newName.trim())) {
+          return jsonResponse({ 
+            error: '文件夹名称包含非法字符（不能包含 < > : " / \\ | ? * 和控制字符）' 
+          }, 400);
+        }
+        
+        // 检查文件夹名称长度
+        if (newName.trim().length > 100) {
+          return jsonResponse({ 
+            error: '文件夹名称过长（最大100个字符）' 
+          }, 400);
+        }
+
+        // 获取文件夹信息
+        const folder = await env.DB.prepare(`
+          SELECT * FROM folders WHERE id = ?
+        `).bind(folderId).first();
+        
+        if (!folder) {
+          return jsonResponse({ error: '文件夹不存在' }, 404);
+        }
+
+        const oldName = folder.name;
+        const newNameTrimmed = newName.trim();
+        
+        if (oldName === newNameTrimmed) {
+          return jsonResponse({ error: '新名称与当前名称相同' }, 400);
+        }
+
+        console.log(`重命名文件夹: ${oldName} -> ${newNameTrimmed}`);
+
+        // 获取所有仓库
+        const repositories = await env.DB.prepare(`
+          SELECT * FROM repositories WHERE status != 'deleted'
+        `).all();
+
+        const octokit = new Octokit({
+          auth: env.GITHUB_TOKEN
+        });
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // 遍历所有仓库，重命名文件夹
+        for (const repo of repositories.results) {
+          try {
+            const oldPath = `public/${oldName}`;
+            const newPath = `public/${newNameTrimmed}`;
+            
+            // 检查旧文件夹是否存在
+            try {
+              await octokit.rest.repos.getContent({
+                owner: repo.owner,
+                repo: repo.name,
+                path: oldPath
+              });
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`仓库 ${repo.name} 中不存在文件夹 ${oldName}，跳过`);
+                continue;
+              }
+              throw error;
+            }
+
+            // 获取旧文件夹中的所有文件
+            const contents = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: oldPath
+            });
+
+            if (Array.isArray(contents.data)) {
+              // 文件夹中有文件，需要逐个移动
+              for (const item of contents.data) {
+                if (item.type === 'file') {
+                  // 获取文件内容
+                  const fileContent = await octokit.rest.repos.getContent({
+                    owner: repo.owner,
+                    repo: repo.name,
+                    path: item.path
+                  });
+
+                  // 在新位置创建文件
+                  await octokit.rest.repos.createOrUpdateFileContents({
+                    owner: repo.owner,
+                    repo: repo.name,
+                    path: item.path.replace(oldPath, newPath),
+                    message: `移动文件: ${item.name} (重命名文件夹 ${oldName} -> ${newNameTrimmed})`,
+                    content: fileContent.data.content,
+                    sha: fileContent.data.sha,
+                    branch: 'main'
+                  });
+
+                  // 删除旧文件
+                  await octokit.rest.repos.deleteFile({
+                    owner: repo.owner,
+                    repo: repo.name,
+                    path: item.path,
+                    message: `删除旧文件: ${item.name} (重命名文件夹 ${oldName} -> ${newNameTrimmed})`,
+                    sha: fileContent.data.sha,
+                    branch: 'main'
+                  });
+                }
+              }
+            }
+
+            // 删除旧文件夹（通过删除 .gitkeep 文件）
+            try {
+              const gitkeepContent = await octokit.rest.repos.getContent({
+                owner: repo.owner,
+                repo: repo.name,
+                path: `${oldPath}/.gitkeep`
+              });
+              
+              await octokit.rest.repos.deleteFile({
+                owner: repo.owner,
+                repo: repo.name,
+                path: `${oldPath}/.gitkeep`,
+                message: `删除旧文件夹: ${oldName} (重命名为 ${newNameTrimmed})`,
+                sha: gitkeepContent.data.sha,
+                branch: 'main'
+              });
+            } catch (error) {
+              // .gitkeep 文件可能不存在，忽略错误
+              console.log(`仓库 ${repo.name} 中 ${oldPath}/.gitkeep 不存在，跳过删除`);
+            }
+
+            // 创建新文件夹（通过创建 .gitkeep 文件）
+            await octokit.rest.repos.createOrUpdateFileContents({
+              owner: repo.owner,
+              repo: repo.name,
+              path: `${newPath}/.gitkeep`,
+              message: `创建新文件夹: ${newNameTrimmed} (从 ${oldName} 重命名)`,
+              content: btoa(''),
+              branch: 'main'
+            });
+
+            successCount++;
+            console.log(`成功重命名仓库 ${repo.name} 中的文件夹`);
+            
+          } catch (error) {
+            errorCount++;
+            const errorMsg = `仓库 ${repo.name} 重命名失败: ${error.message}`;
+            errors.push(errorMsg);
+            console.error(errorMsg);
+          }
+        }
+
+        // 更新数据库中的文件夹信息
+        await env.DB.prepare(`
+          UPDATE folders 
+          SET name = ?, path = ?, updated_at = datetime('now', '+8 hours')
+          WHERE id = ?
+        `).bind(newNameTrimmed, `public/${newNameTrimmed}`, folderId).run();
+
+        // 更新所有相关文件的路径
+        await env.DB.prepare(`
+          UPDATE images 
+          SET github_path = REPLACE(github_path, ?, ?)
+          WHERE github_path LIKE ?
+        `).bind(`public/${oldName}/`, `public/${newNameTrimmed}/`, `public/${oldName}/%`).run();
+
+        return jsonResponse({
+          success: true,
+          message: `文件夹重命名完成。成功: ${successCount} 个仓库，失败: ${errorCount} 个仓库`,
+          data: {
+            successCount,
+            errorCount,
+            errors: errors.length > 0 ? errors : undefined
+          }
+        });
+        
+      } catch (error) {
+        console.error('重命名文件夹失败:', error);
+        return jsonResponse({ 
+          error: '重命名文件夹失败: ' + error.message 
+        }, 500);
+      }
+    }
+
+    // 删除文件夹（在所有仓库中同步）
+    if (path.match(/^folders\/(\d+)\/delete$/) && request.method === 'DELETE') {
+      try {
+        console.log('处理删除文件夹请求');
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取文件夹ID
+        const folderId = parseInt(path.match(/^folders\/(\d+)\/delete$/)[1], 10);
+        if (isNaN(folderId)) { 
+          return jsonResponse({ error: '无效的文件夹ID' }, 400); 
+        }
+
+        // 获取文件夹信息
+        const folder = await env.DB.prepare(`
+          SELECT * FROM folders WHERE id = ?
+        `).bind(folderId).first();
+        
+        if (!folder) {
+          return jsonResponse({ error: '文件夹不存在' }, 404);
+        }
+
+        console.log(`删除文件夹: ${folder.name}`);
+
+        // 获取所有仓库
+        const repositories = await env.DB.prepare(`
+          SELECT * FROM repositories WHERE status != 'deleted'
+        `).all();
+
+        const octokit = new Octokit({
+          auth: env.GITHUB_TOKEN
+        });
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // 遍历所有仓库，删除文件夹
+        for (const repo of repositories.results) {
+          try {
+            const folderPath = `public/${folder.name}`;
+            
+            // 检查文件夹是否存在
+            try {
+              await octokit.rest.repos.getContent({
+                owner: repo.owner,
+                repo: repo.name,
+                path: folderPath
+              });
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`仓库 ${repo.name} 中不存在文件夹 ${folder.name}，跳过`);
+                continue;
+              }
+              throw error;
+            }
+
+            // 获取文件夹中的所有文件
+            const contents = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: folderPath
+            });
+
+            if (Array.isArray(contents.data)) {
+              // 文件夹中有文件，需要逐个删除
+              for (const item of contents.data) {
+                if (item.type === 'file') {
+                  await octokit.rest.repos.deleteFile({
+                    owner: repo.owner,
+                    repo: repo.name,
+                    path: item.path,
+                    message: `删除文件: ${item.name} (删除文件夹 ${folder.name})`,
+                    sha: item.sha,
+                    branch: 'main'
+                  });
+                }
+              }
+            }
+
+            successCount++;
+            console.log(`成功删除仓库 ${repo.name} 中的文件夹`);
+            
+          } catch (error) {
+            errorCount++;
+            const errorMsg = `仓库 ${repo.name} 删除失败: ${error.message}`;
+            errors.push(errorMsg);
+            console.error(errorMsg);
+          }
+        }
+
+        // 删除数据库中的文件夹记录
+        await env.DB.prepare(`
+          DELETE FROM folders WHERE id = ?
+        `).bind(folderId).run();
+
+        // 删除数据库中该文件夹下的所有文件记录
+        await env.DB.prepare(`
+          DELETE FROM images WHERE github_path LIKE ?
+        `).bind(`${folder.path}/%`).run();
+
+        return jsonResponse({
+          success: true,
+          message: `文件夹删除完成。成功: ${successCount} 个仓库，失败: ${errorCount} 个仓库`,
+          data: {
+            successCount,
+            errorCount,
+            errors: errors.length > 0 ? errors : undefined
+          }
+        });
+        
+      } catch (error) {
+        console.error('删除文件夹失败:', error);
+        return jsonResponse({ 
+          error: '删除文件夹失败: ' + error.message 
+        }, 500);
+      }
+    }
+
     // 如果没有匹配的路由，返回 404
     console.log('未找到匹配的路由:', path);
     return new Response(JSON.stringify({
