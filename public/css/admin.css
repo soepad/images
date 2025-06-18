@@ -2261,4 +2261,227 @@ body.mobile-view .image-checkbox {
     .stat-item {
         font-size: 13px;
     }
+}
+
+/* 文件夹内容显示样式 */
+.folder-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.folder-path {
+    color: #666;
+    font-size: 14px;
+}
+
+.file-count {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.files-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.file-item:hover {
+    box-shadow: var(--shadow);
+    border-color: var(--primary-color);
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.file-icon {
+    width: 40px;
+    height: 40px;
+    background-color: var(--secondary-color);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-icon i {
+    font-size: 18px;
+    color: var(--primary-color);
+}
+
+.file-details {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.file-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: #666;
+}
+
+.file-size {
+    font-weight: 500;
+}
+
+.file-repo {
+    background-color: var(--secondary-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.file-date {
+    color: #999;
+}
+
+.file-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.file-actions .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.empty-folder {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-folder i {
+    font-size: 48px;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.empty-folder h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #999;
+}
+
+.empty-folder p {
+    margin-bottom: 20px;
+    color: #999;
+}
+
+/* 重命名和删除模态框样式 */
+.warning-message {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 15px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.warning-message i {
+    color: #f39c12;
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.warning-message p {
+    color: #856404;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.danger-message {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+.danger-message i {
+    color: #dc3545;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.danger-message h4 {
+    color: #721c24;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.danger-message p {
+    color: #721c24;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.danger-message ul {
+    color: #721c24;
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.danger-message li {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .file-info {
+        width: 100%;
+    }
+    
+    .file-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .file-meta {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .folder-info-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
 } 
