@@ -2664,11 +2664,23 @@ async function uploadSelectedFiles(files) {
     }
     
     // 更新进度条
-    function updateProgress(uploaded) {
+    function updateProgress(uploaded, currentFileSize = null) {
         // 计算总体进度
-        const fileContribution = uploaded / totalSize;
-        const completedContribution = uploadedBytes / totalSize;
-        const overallProgress = completedContribution + fileContribution;
+        let overallProgress;
+        
+        if (currentFileSize) {
+            // 分块上传：计算当前文件的进度贡献
+            const currentFileProgress = uploaded / currentFileSize;
+            const completedContribution = uploadedBytes / totalSize;
+            const currentFileContribution = currentFileSize / totalSize;
+            overallProgress = completedContribution + (currentFileProgress * currentFileContribution);
+        } else {
+            // 普通上传：直接计算
+            const fileContribution = uploaded / totalSize;
+            const completedContribution = uploadedBytes / totalSize;
+            overallProgress = completedContribution + fileContribution;
+        }
+        
         const percent = Math.min(100, Math.round(overallProgress * 100));
         
         progressFill.style.width = `${percent}%`;
@@ -2691,7 +2703,8 @@ async function uploadSelectedFiles(files) {
                 // 创建分块上传实例
                 const uploader = new window.ChunkedUploader(file, {
                     onProgress: (progress) => {
-                        updateProgress(progress.uploadedSize);
+                        // 分块上传器返回的是已上传的字节数
+                        updateProgress(progress.uploadedSize, file.size);
                     },
                     onComplete: (result) => {
                         console.log('分块上传完成:', result);
