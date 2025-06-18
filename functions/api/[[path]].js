@@ -2059,16 +2059,43 @@ export async function onRequest(context) {
         
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+        const readmePath = `${folderPath}/README.md`;
         
         try {
-          await octokit.rest.repos.createOrUpdateFileContents({
+          // 先检查README.md是否已存在
+          let existingSha = null;
+          try {
+            const existingFile = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: readmePath
+            });
+            existingSha = existingFile.data.sha;
+            console.log(`README.md已存在，SHA: ${existingSha}`);
+          } catch (error) {
+            if (error.status !== 404) {
+              throw error;
+            }
+            // 404表示文件不存在，继续创建
+            console.log('README.md不存在，将创建新文件');
+          }
+          
+          // 创建或更新README.md文件
+          const createParams = {
             owner: repo.owner,
             repo: repo.name,
-            path: `${folderPath}/README.md`,
+            path: readmePath,
             message: `创建文件夹: ${folderName}`,
             content: btoa(unescape(encodeURIComponent(placeholderContent))),
             branch: 'main'
-          });
+          };
+          
+          // 如果文件已存在，添加SHA参数
+          if (existingSha) {
+            createParams.sha = existingSha;
+          }
+          
+          await octokit.rest.repos.createOrUpdateFileContents(createParams);
           
           console.log(`成功创建文件夹: ${folderPath}`);
           
@@ -2124,10 +2151,10 @@ export async function onRequest(context) {
             f.name,
             f.path,
             f.created_at,
-            COALESCE(SUM(ff.size), 0) as total_size,
-            COUNT(ff.id) as file_count
+            COALESCE(SUM(i.size), 0) as total_size,
+            COUNT(i.id) as file_count
           FROM folders f
-          LEFT JOIN folder_files ff ON f.id = ff.folder_id
+          LEFT JOIN images i ON i.github_path LIKE f.path || '/%'
           GROUP BY f.id, f.name, f.path, f.created_at
           ORDER BY f.created_at DESC
         `).all();
