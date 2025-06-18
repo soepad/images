@@ -2450,7 +2450,9 @@ export async function onRequest(context) {
         console.log('Octokit实例创建成功:', {
           hasOctokit: !!octokit,
           hasRepos: !!octokit.repos,
+          hasRest: !!octokit.rest,
           reposKeys: octokit.repos ? Object.keys(octokit.repos) : 'undefined',
+          restKeys: octokit.rest ? Object.keys(octokit.rest) : 'undefined',
           hasGetContent: octokit.repos ? !!octokit.repos.getContent : 'undefined'
         });
         
@@ -2459,7 +2461,7 @@ export async function onRequest(context) {
         
         // 检查文件夹是否已存在
         try {
-          await octokit.repos.getContent({
+          await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
             path: folderPath
@@ -2479,7 +2481,7 @@ export async function onRequest(context) {
         
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
-          await octokit.repos.createOrUpdateFileContents({
+          await octokit.rest.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
