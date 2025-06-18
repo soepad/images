@@ -652,6 +652,8 @@ export async function onRequest(context) {
         
         // 保存文件夹信息到数据库
         try {
+          console.log(`准备插入数据库: repoId=${repoId}, folderName=${folderName.trim()}, folderPath=${folderPath}`);
+          
           await env.DB.prepare(`
             INSERT INTO folders (name, path, repository_id, created_at, updated_at)
             VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
