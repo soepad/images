@@ -652,6 +652,7 @@ export async function onRequest(context) {
         }
         
         // 保存文件夹信息到数据库
+        let dbSuccess = false;
         try {
           console.log(`准备插入数据库: repoId=${repoId}, folderName=${folderName.trim()}, folderPath=${folderPath}`);
           console.log(`repoId类型: ${typeof repoId}, 值: ${repoId}`);
@@ -667,37 +668,31 @@ export async function onRequest(context) {
           
           if (!repoCheck) {
             console.error(`仓库ID ${repoId} 不存在`);
-            return new Response(JSON.stringify({
-              success: false,
-              error: '仓库不存在'
-            }), {
-              status: 404,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              }
-            });
-          }
-          
-          // 确保repoId是数字类型
-          const numericRepoId = parseInt(repoId, 10);
-          console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
-          
-          // 检查文件夹是否已存在
-          const existingFolder = await env.DB.prepare(`
-            SELECT id FROM folders WHERE path = ?
-          `).bind(folderPath).first();
-          
-          if (!existingFolder) {
-            const insertResult = await env.DB.prepare(`
-              INSERT INTO folders (name, path, repository_id, created_at, updated_at)
-              VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
-            `).bind(folderName.trim(), folderPath, numericRepoId).run();
-            
-            console.log(`插入结果:`, insertResult);
-            console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+            // 不返回错误，只记录警告，因为GitHub上的文件夹已经创建成功
+            console.warn('仓库不存在，但GitHub文件夹已创建成功');
           } else {
-            console.log('文件夹已存在于数据库中，跳过插入');
+            // 确保repoId是数字类型
+            const numericRepoId = parseInt(repoId, 10);
+            console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
+            
+            // 检查文件夹是否已存在
+            const existingFolder = await env.DB.prepare(`
+              SELECT id FROM folders WHERE path = ?
+            `).bind(folderPath).first();
+            
+            if (!existingFolder) {
+              const insertResult = await env.DB.prepare(`
+                INSERT INTO folders (name, path, repository_id, created_at, updated_at)
+                VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
+              `).bind(folderName.trim(), folderPath, numericRepoId).run();
+              
+              console.log(`插入结果:`, insertResult);
+              console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+              dbSuccess = true;
+            } else {
+              console.log('文件夹已存在于数据库中，跳过插入');
+              dbSuccess = true;
+            }
           }
         } catch (dbError) {
           console.error('保存文件夹信息到数据库失败:', dbError);
@@ -709,10 +704,12 @@ export async function onRequest(context) {
           // 不影响创建结果，只记录警告
         }
         
+        // 返回成功响应，因为GitHub上的文件夹已经创建成功
         return new Response(JSON.stringify({
           success: true,
           message: '文件夹创建成功',
-          folderPath: folderPath
+          folderPath: folderPath,
+          dbSuccess: dbSuccess
         }), {
           headers: {
             'Content-Type': 'application/json',
