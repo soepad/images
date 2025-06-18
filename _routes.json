@@ -8,28 +8,16 @@
   ],
   "routes": [
     {
+      "pattern": "/api/repositories/*",
+      "script": "functions/api/repositories.js"
+    },
+    {
       "pattern": "/api/upload*",
       "script": "functions/api/upload.js"
     },
     {
       "pattern": "/api/deploy-trigger",
       "script": "functions/api/deploy-trigger.js"
-    },
-    {
-      "pattern": "/api/repositories*",
-      "script": "functions/api/repositories.js"
-    },
-    {
-      "pattern": "/api/folders*",
-      "script": "functions/api/[[path]].js"
-    },
-    {
-      "pattern": "/api/settings*",
-      "script": "functions/api/[[path]].js"
-    },
-    {
-      "pattern": "/api/admin*",
-      "script": "functions/api/[[path]].js"
     },
     {
       "pattern": "/api/*",
