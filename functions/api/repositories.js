@@ -510,7 +510,7 @@ export async function onRequest(context) {
         
         // 检查文件夹是否已存在
         try {
-          await octokit.repos.getContent({
+          await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
             path: folderPath
@@ -549,7 +549,7 @@ export async function onRequest(context) {
         // 直接创建文件夹，不使用SHA参数
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
-          await octokit.repos.createOrUpdateFileContents({
+          await octokit.rest.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
