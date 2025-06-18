@@ -3766,6 +3766,10 @@ function displayFolderContents(folder, files) {
         </div>
     `;
     
+    // 存储文件夹ID用于刷新
+    modal.dataset.folderId = folder.id;
+    modal.dataset.folderName = folder.name;
+    
     document.body.appendChild(modal);
     modal.style.display = 'block';
     
@@ -3821,10 +3825,11 @@ async function deleteFile(fileId) {
             showNotification('文件删除成功', 'success');
             // 刷新当前文件夹内容
             const modal = document.getElementById('folderContentsModal');
-            if (modal) {
-                const folderId = modal.querySelector('.modal-header h3').textContent.match(/文件夹: (.+)/)[1];
+            if (modal && modal.dataset.folderId) {
+                const folderId = modal.dataset.folderId;
+                const folderName = modal.dataset.folderName;
                 // 重新加载文件夹内容
-                openFolder(folderId, folderId);
+                openFolder(folderId, folderName);
             }
         } else {
             throw new Error(response.error || '删除文件失败');
