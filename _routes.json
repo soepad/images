@@ -20,6 +20,18 @@
       "script": "functions/api/repositories.js"
     },
     {
+      "pattern": "/api/folders*",
+      "script": "functions/api/[[path]].js"
+    },
+    {
+      "pattern": "/api/settings*",
+      "script": "functions/api/[[path]].js"
+    },
+    {
+      "pattern": "/api/admin*",
+      "script": "functions/api/[[path]].js"
+    },
+    {
       "pattern": "/api/*",
       "script": "functions/api/[[path]].js"
     },
