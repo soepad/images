@@ -116,7 +116,7 @@ async function deleteImageFromGithub(env, image, repositoryInfo) {
       // 尝试删除GitHub上的文件
       console.log(`尝试从仓库删除: owner=${repositoryInfo.owner}, repo=${repositoryInfo.repo}, path=${image.github_path}`);
       
-      const githubResponse = await octokit.rest.repos.deleteFile({
+      const githubResponse = await octokit.repos.deleteFile({
         owner: repositoryInfo.owner,
         repo: repositoryInfo.repo,
         path: image.github_path,
@@ -542,7 +542,7 @@ export async function onRequest(context) {
         // 验证 GitHub 配置
         console.log('验证 GitHub 配置');
         try {
-          const repoInfo = await octokit.rest.repos.get({
+          const repoInfo = await octokit.repos.get({
             owner: env.GITHUB_OWNER,
             repo: env.GITHUB_REPO
           });
@@ -630,7 +630,7 @@ export async function onRequest(context) {
 
           // 尝试获取已存在的文件信息，用于检查文件是否已存在
           try {
-            const existingFile = await octokit.rest.repos.getContent({
+            const existingFile = await octokit.repos.getContent({
               owner: env.GITHUB_OWNER,
               repo: env.GITHUB_REPO,
               path: filePath,
@@ -658,7 +658,7 @@ export async function onRequest(context) {
             }
           }
 
-          const response = await octokit.rest.repos.createOrUpdateFileContents({
+          const response = await octokit.repos.createOrUpdateFileContents({
             owner: env.GITHUB_OWNER,
             repo: env.GITHUB_REPO,
             path: filePath,
