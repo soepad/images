@@ -137,8 +137,8 @@ async function syncRepositorySize(env, repoId) {
  */
 export async function onRequest(context) {
   try {
-    const { request, env } = context;
-    const url = new URL(request.url);
+  const { request, env } = context;
+  const url = new URL(request.url);
       const path = url.pathname.replace('/api/repositories', '').replace(/^\/+/, '');
       
       console.log('处理仓库管理请求:', {
@@ -510,7 +510,7 @@ export async function onRequest(context) {
         
         // 检查文件夹是否已存在
         try {
-          await octokit.rest.repos.getContent({
+          await octokit.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
             path: folderPath
@@ -549,7 +549,7 @@ export async function onRequest(context) {
         // 直接创建文件夹，不使用SHA参数
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
-          await octokit.rest.repos.createFile({
+          await octokit.repos.createOrUpdateFileContents({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
@@ -686,14 +686,14 @@ export async function onRequest(context) {
           return new Response(JSON.stringify({
             success: false,
             error: '状态值不能为空'
-          }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
-        }
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
       
       if (!['active', 'inactive', 'full'].includes(status)) {
         return new Response(JSON.stringify({
