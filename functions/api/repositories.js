@@ -501,7 +501,7 @@ export async function onRequest(context) {
       
       // 创建Octokit实例
       const octokit = new Octokit({
-        auth: env.GITHUB_TOKEN
+        auth: repo.token || env.GITHUB_TOKEN
       });
       
       // 创建文件夹路径
@@ -546,24 +546,37 @@ export async function onRequest(context) {
       const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
       
       try {
-        // 首先尝试获取main分支的最新提交SHA
-        const branchInfo = await octokit.rest.repos.getBranch({
-          owner: repo.owner,
-          repo: repo.name,
-          branch: 'main'
-        });
+        // 尝试获取main分支的最新提交SHA，如果失败则使用null（让GitHub自动处理）
+        let latestCommitSha = null;
+        try {
+          const branchInfo = await octokit.rest.repos.getBranch({
+            owner: repo.owner,
+            repo: repo.name,
+            branch: 'main'
+          });
+          latestCommitSha = branchInfo.data.commit.sha;
+          console.log(`获取到main分支SHA: ${latestCommitSha}`);
+        } catch (branchError) {
+          console.log('无法获取main分支信息，将使用null SHA（适用于空仓库）:', branchError.message);
+          latestCommitSha = null;
+        }
         
-        const latestCommitSha = branchInfo.data.commit.sha;
-        
-        await octokit.rest.repos.createOrUpdateFileContents({
+        // 准备创建文件的参数
+        const createFileParams = {
           owner: repo.owner,
           repo: repo.name,
           path: `${folderPath}/README.md`,
           message: `创建文件夹: ${folderName}`,
           content: btoa(unescape(encodeURIComponent(placeholderContent))),
-          branch: 'main',
-          sha: latestCommitSha // 使用最新提交的SHA
-        });
+          branch: 'main'
+        };
+        
+        // 只有在有SHA的情况下才添加sha参数
+        if (latestCommitSha) {
+          createFileParams.sha = latestCommitSha;
+        }
+        
+        await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
         
         console.log(`成功创建文件夹: ${folderPath}`);
         
