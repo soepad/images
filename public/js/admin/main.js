@@ -1144,7 +1144,7 @@ function createRepositoryCard(repo) {
         </div>
         <div class="repo-actions">
             <div class="actions-container">
-                <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" disabled style="background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 0.6; cursor: not-allowed;">
+                <button class="btn btn-sm btn-outline-success btn-icon create-folder-btn" data-repo-id="${repo.id}" data-repo-name="${repo.name}" data-repo-owner="${repo.owner}" ${repo.status !== 'active' ? 'disabled style="background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 0.6; cursor: not-allowed;"' : ''}>
                     <i class="fas fa-folder-plus"></i> 新建文件夹
                 </button>
                 
@@ -1178,6 +1178,17 @@ function createRepositoryCard(repo) {
             await updateRepositoryStatus(repoId, status, e.currentTarget);
         });
     });
+    
+    // 为新建文件夹按钮添加事件监听器（只在仓库状态为active时）
+    const createFolderBtn = card.querySelector('.create-folder-btn');
+    if (createFolderBtn && repo.status === 'active') {
+        createFolderBtn.addEventListener('click', (e) => {
+            const repoId = e.currentTarget.dataset.repoId;
+            const repoName = e.currentTarget.dataset.repoName;
+            const repoOwner = e.currentTarget.dataset.repoOwner;
+            showCreateFolderModal(repoId, repoName, repoOwner);
+        });
+    }
     
     return card;
 }
