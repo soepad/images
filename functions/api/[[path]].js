@@ -2405,8 +2405,6 @@ export async function onRequest(context) {
       }
     }
 
-    // 添加调试模式检查
-    const isDebugMode = request.headers.get('X-Debug-Mode') === 'true' || url.searchParams.has('debug');
     
     // 处理 repositories/create-folder 路径
     if (path.match(/^repositories\/create-folder\/(\d+)$/) && request.method === 'POST') {
@@ -2582,3 +2580,4 @@ export async function onRequest(context) {
     });
   }
 } 
+
