@@ -165,7 +165,7 @@ export async function createNewRepository(env, currentRepoName) {
     // 检查仓库是否已存在
     let repoExists = false;
     try {
-      const existingRepo = await octokit.rest.repos.get({
+      const existingRepo = await octokit.repos.get({
         owner: env.GITHUB_OWNER,
         repo: newRepoName
       });
@@ -187,7 +187,7 @@ export async function createNewRepository(env, currentRepoName) {
         console.log(`尝试创建组织仓库: ${env.GITHUB_OWNER}/${newRepoName}`);
         
         // 尝试创建组织仓库
-        await octokit.rest.repos.createInOrg({
+        await octokit.repos.createInOrg({
           org: env.GITHUB_OWNER,
           name: newRepoName,
           auto_init: true,
@@ -200,7 +200,7 @@ export async function createNewRepository(env, currentRepoName) {
         // 如果创建组织仓库失败，尝试创建个人仓库
         console.log(`创建组织仓库失败，尝试创建个人仓库: ${env.GITHUB_OWNER}/${newRepoName}`, orgError.message);
         
-        await octokit.rest.repos.createForAuthenticatedUser({
+        await octokit.repos.createForAuthenticatedUser({
           name: newRepoName,
           auto_init: true,
           private: true,
@@ -221,7 +221,7 @@ export async function createNewRepository(env, currentRepoName) {
       
       // 检查public目录是否存在
       try {
-        await octokit.rest.repos.getContent({
+        await octokit.repos.getContent({
           owner: env.GITHUB_OWNER,
           repo: newRepoName,
           path: 'public'
@@ -231,7 +231,7 @@ export async function createNewRepository(env, currentRepoName) {
         if (error.status === 404) {
           // 创建public目录
           console.log('创建public目录');
-          await octokit.rest.repos.createOrUpdateFileContents({
+          await octokit.repos.createOrUpdateFileContents({
             owner: env.GITHUB_OWNER,
             repo: newRepoName,
             path: 'public/.gitkeep',
@@ -246,7 +246,7 @@ export async function createNewRepository(env, currentRepoName) {
       
       // 检查public/images目录是否存在
       try {
-        await octokit.rest.repos.getContent({
+        await octokit.repos.getContent({
           owner: env.GITHUB_OWNER,
           repo: newRepoName,
           path: 'public/images'
@@ -256,7 +256,7 @@ export async function createNewRepository(env, currentRepoName) {
         if (error.status === 404) {
           // 创建public/images目录
           console.log('创建public/images目录');
-          await octokit.rest.repos.createOrUpdateFileContents({
+          await octokit.repos.createOrUpdateFileContents({
             owner: env.GITHUB_OWNER,
             repo: newRepoName,
             path: 'public/images/.gitkeep',
