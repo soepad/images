@@ -16,6 +16,10 @@
       "script": "functions/api/deploy-trigger.js"
     },
     {
+      "pattern": "/api/repositories*",
+      "script": "functions/api/repositories.js"
+    },
+    {
       "pattern": "/api/*",
       "script": "functions/api/[[path]].js"
     },
