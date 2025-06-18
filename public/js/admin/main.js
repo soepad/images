@@ -2420,7 +2420,37 @@ function positionDropdownMenu(menu, triggerElement) {
     }
 }
 
-// 上传模态框功能
+// 清理上传状态的函数
+function resetUploadState() {
+    console.log('重置上传状态');
+    const modal = document.getElementById('uploadModal');
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    
+    // 清除文件输入框值
+    if (fileInput) fileInput.value = '';
+    
+    // 重新显示上传区域
+    if (uploadArea) uploadArea.style.display = 'block';
+    
+    // 清除文件列表和确认按钮
+    if (modal) {
+        const modalBody = modal.querySelector('.modal-body');
+        if (modalBody) {
+            const fileList = modalBody.querySelector('.file-list');
+            const confirmBtn = modalBody.querySelector('.confirm-upload-btn');
+            
+            if (fileList) fileList.remove();
+            if (confirmBtn) confirmBtn.remove();
+        }
+    }
+    
+    // 隐藏进度条
+    const uploadProgress = document.querySelector('.upload-progress');
+    if (uploadProgress) uploadProgress.style.display = 'none';
+}
+
+// 初始化上传模态框
 function initUploadModal() {
     console.log('正在初始化上传模态框');
     const modal = document.getElementById('uploadModal');
@@ -2437,30 +2467,6 @@ function initUploadModal() {
             closeBtn: !!closeBtn
         });
         return;
-    }
-    
-    // 清理上传状态的函数
-    function resetUploadState() {
-        console.log('重置上传状态');
-        // 清除文件输入框值
-        if (fileInput) fileInput.value = '';
-        
-        // 重新显示上传区域
-        if (uploadArea) uploadArea.style.display = 'block';
-        
-        // 清除文件列表和确认按钮
-        const modalBody = modal.querySelector('.modal-body');
-        if (modalBody) {
-            const fileList = modalBody.querySelector('.file-list');
-            const confirmBtn = modalBody.querySelector('.confirm-upload-btn');
-            
-            if (fileList) fileList.remove();
-            if (confirmBtn) confirmBtn.remove();
-        }
-        
-        // 隐藏进度条
-        const uploadProgress = document.querySelector('.upload-progress');
-        if (uploadProgress) uploadProgress.style.display = 'none';
     }
     
     // 关闭模态框
