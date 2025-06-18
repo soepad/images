@@ -1759,6 +1759,59 @@ export async function onRequest(context) {
       }
     }
 
+    // 更新仓库状态
+    if (path.match(/^repositories\/status\/(\d+)$/) && request.method === 'PUT') {
+      try {
+        console.log('处理更新仓库状态请求:', path);
+        
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取仓库ID
+        const repoId = parseInt(path.match(/^repositories\/status\/(\d+)$/)[1], 10);
+        if (isNaN(repoId)) { 
+          return jsonResponse({ error: '无效的仓库ID' }, 400); 
+        }
+
+        // 解析请求体
+        const requestData = await request.json();
+        const { status } = requestData;
+        
+        if (!status) {
+          return jsonResponse({ error: '状态值不能为空' }, 400);
+        }
+        
+        if (!['active', 'inactive', 'full'].includes(status)) {
+          return jsonResponse({ 
+            error: '无效的状态值，必须为 active、inactive 或 full' 
+          }, 400);
+        }
+        
+        console.log(`更新仓库状态: 仓库ID=${repoId}, 新状态=${status}`);
+        
+        // 更新状态
+        await env.DB.prepare(`
+          UPDATE repositories 
+          SET status = ?, updated_at = datetime('now', '+8 hours')
+          WHERE id = ?
+        `).bind(status, repoId).run();
+        
+        return jsonResponse({
+          success: true,
+          message: `仓库状态已更新为 ${status}`
+        });
+        
+      } catch (error) {
+        console.error('更新仓库状态失败:', error);
+        return jsonResponse({ 
+          error: '更新仓库状态失败: ' + error.message 
+        }, 500);
+      }
+    }
+
     // 创建仓库
     if (path === 'repositories/create' && request.method === 'POST') {
       try {
