@@ -190,7 +190,7 @@ export async function onRequest(context) {
       
       // 检查文件是否已存在
       try {
-        const fileExists = await octokit.repos.getContent({
+        const fileExists = await octokit.rest.repos.getContent({
           owner: repository.owner,
           repo: repository.repo,
           path: filePath
@@ -217,11 +217,11 @@ export async function onRequest(context) {
       }
       
       // 上传到GitHub
-      const response = await octokit.repos.createOrUpdateFileContents({
+      const response = await octokit.rest.repos.createOrUpdateFileContents({
         owner: repository.owner,
         repo: repository.repo,
         path: filePath,
-        message: `Upload ${fileName} (${datePath})`,
+        message: `Upload ${file.name}`,
         content: base64Data,
         branch: 'main'
       });
@@ -748,7 +748,7 @@ export async function onRequest(context) {
       
       try {
         // 上传文件到GitHub
-        const response = await octokit.repos.createOrUpdateFileContents({
+        const response = await octokit.rest.repos.createOrUpdateFileContents({
           owner: repository.owner,
           repo: repository.repo,
           path: filePath,
