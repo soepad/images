@@ -278,16 +278,27 @@ export async function onRequest(context) {
           repository.id
         ).run();
         
-        // 更新仓库大小和文件计数
+        // 更新仓库大小和文件计数 - 直接从数据库计算实际值
+        const statsResult = await env.DB.prepare(`
+          SELECT 
+            COUNT(DISTINCT id) as file_count,
+            COALESCE(SUM(size), 0) as total_size
+          FROM images 
+          WHERE repository_id = ?
+        `).bind(repository.id).first();
+        
+        const actualFileCount = statsResult.file_count || 0;
+        const actualSize = statsResult.total_size || 0;
+        
+        // 更新仓库的实际文件数量和大小
         await env.DB.prepare(`
           UPDATE repositories 
-          SET size_estimate = size_estimate + ?,
-              file_count = file_count + 1,
-              updated_at = CURRENT_TIMESTAMP
+          SET size_estimate = ?,
+              updated_at = datetime('now', '+8 hours')
           WHERE id = ?
-        `).bind(file.size, repository.id).run();
+        `).bind(actualSize, repository.id).run();
         
-        console.log(`文件信息已保存到数据库，上传时间(北京): ${beijingTimeString}`);
+        console.log(`仓库 ${repository.repo} 统计信息已更新: ${actualFileCount} 个文件, ${actualSize} 字节`);
       } catch (dbError) {
         console.error('数据库保存失败:', dbError);
         
@@ -786,16 +797,27 @@ export async function onRequest(context) {
             repository.id
           ).run();
           
-          // 更新仓库大小和文件计数
+          // 更新仓库大小和文件计数 - 直接从数据库计算实际值
+          const statsResult = await env.DB.prepare(`
+            SELECT 
+              COUNT(DISTINCT id) as file_count,
+              COALESCE(SUM(size), 0) as total_size
+            FROM images 
+            WHERE repository_id = ?
+          `).bind(repository.id).first();
+          
+          const actualFileCount = statsResult.file_count || 0;
+          const actualSize = statsResult.total_size || 0;
+          
+          // 更新仓库的实际文件数量和大小
           await env.DB.prepare(`
             UPDATE repositories 
-            SET size_estimate = size_estimate + ?,
-                file_count = file_count + 1,
-                updated_at = CURRENT_TIMESTAMP
+            SET size_estimate = ?,
+                updated_at = datetime('now', '+8 hours')
             WHERE id = ?
-          `).bind(session.fileSize, repository.id).run();
+          `).bind(actualSize, repository.id).run();
           
-          console.log(`文件信息已保存到数据库，上传时间(北京): ${beijingTimeString}`);
+          console.log(`仓库 ${repository.repo} 统计信息已更新: ${actualFileCount} 个文件, ${actualSize} 字节`);
         } catch (dbError) {
           console.error('数据库保存失败:', dbError);
           // 继续执行，不因为数据库错误而中断
