@@ -4,7 +4,7 @@ let totalPages = 1;
 let currentSort = 'newest';
 let currentSearch = '';
 let isDebugMode = false; // 调试模式标志
-let allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon']; // 默认允许的文件类型
+let allowedFileTypes = ['*/*']; // 默认允许所有文件类型
 
 // 保存原始控制台方法的引用
 const originalConsole = {
@@ -443,7 +443,7 @@ function initSettings() {
                     }
                     
                     if (allowedTypes) {
-                        allowedTypes.value = settings.allowed_types || 'image/jpeg,image/png,image/gif,image/webp';
+                        allowedTypes.value = settings.allowed_types || '*/*';
                     }
                     
                     // 填充图像处理设置
@@ -584,7 +584,12 @@ function initSettings() {
                         
                         // 更新全局允许的文件类型
                         if (allowedTypesValue) {
-                            allowedFileTypes = allowedTypesValue.split(',');
+                            // 如果设置为允许所有类型，使用通配符
+                            if (allowedTypesValue === '*/*' || allowedTypesValue === '*') {
+                                allowedFileTypes = ['*/*'];
+                            } else {
+                                allowedFileTypes = allowedTypesValue.split(',');
+                            }
                         }
                     } else {
                         console.error('保存上传设置失败:', response.error);
@@ -732,9 +737,16 @@ async function loadAllowedFileTypes() {
         clearTimeout(timeoutId);
         
         if (!response.error && response.allowed_types) {
-            allowedFileTypes = response.allowed_types.split(',');
+            // 如果设置为允许所有类型，使用通配符
+            if (response.allowed_types === '*/*' || response.allowed_types === '*') {
+                allowedFileTypes = ['*/*'];
+            } else {
+                allowedFileTypes = response.allowed_types.split(',');
+            }
             console.log('已加载允许的文件类型:', allowedFileTypes);
         } else {
+            // 默认允许所有文件类型
+            allowedFileTypes = ['*/*'];
             console.log('使用默认的允许文件类型:', allowedFileTypes);
         }
     } catch (error) {
@@ -2580,11 +2592,7 @@ function handleFiles(files) {
     
     // 显示每个文件的信息
     Array.from(files).forEach(file => {
-        if (!file.type.startsWith('image/')) {
-            showNotification('只能上传图片文件', 'error');
-            return;
-        }
-        
+        // 移除文件类型限制，允许上传任何类型的文件
         validFiles.push(file);
         
         const fileInfo = document.createElement('div');
