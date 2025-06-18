@@ -432,6 +432,18 @@ export async function onRequest(context) {
         isPost: request.method === 'POST'
       });
       
+      // 临时测试：直接返回成功响应
+      return new Response(JSON.stringify({
+        success: true,
+        message: '测试响应 - 创建文件夹功能正常',
+        folderPath: 'test/path'
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+      
       try {
         const repoId = parseInt(path.replace('/create-folder/', ''));
         
