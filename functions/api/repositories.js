@@ -431,6 +431,7 @@ export async function onRequest(context) {
         startsWithCreateFolder: path.startsWith('/create-folder/'),
         isPost: request.method === 'POST'
       });
+      
       try {
         const repoId = parseInt(path.replace('/create-folder/', ''));
         
@@ -530,7 +531,7 @@ export async function onRequest(context) {
             console.error('检查文件夹是否存在时出错:', error);
             return new Response(JSON.stringify({
               success: false,
-              error: '检查文件夹状态失败'
+              error: '检查文件夹状态失败: ' + error.message
             }), {
               status: 500,
               headers: {
@@ -545,254 +546,130 @@ export async function onRequest(context) {
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
+        // 尝试获取main分支的最新提交SHA
+        let latestCommitSha = null;
         try {
-          // 尝试获取main分支的最新提交SHA
-          let latestCommitSha = null;
-          try {
-            const branchInfo = await octokit.rest.repos.getBranch({
-              owner: repo.owner,
-              repo: repo.name,
-              branch: 'main'
-            });
-            latestCommitSha = branchInfo.data.commit.sha;
-            console.log(`获取到main分支SHA: ${latestCommitSha}`);
-          } catch (branchError) {
-            console.log('无法获取main分支信息，尝试获取默认分支:', branchError.message);
-            
-            // 如果无法获取main分支，尝试获取仓库的默认分支
-            try {
-              const repoInfo = await octokit.rest.repos.get({
-                owner: repo.owner,
-                repo: repo.name
-              });
-              
-              const defaultBranch = repoInfo.data.default_branch;
-              console.log(`仓库默认分支: ${defaultBranch}`);
-              
-              if (defaultBranch && defaultBranch !== 'main') {
-                const defaultBranchInfo = await octokit.rest.repos.getBranch({
-                  owner: repo.owner,
-                  repo: repo.name,
-                  branch: defaultBranch
-                });
-                latestCommitSha = defaultBranchInfo.data.commit.sha;
-                console.log(`获取到默认分支SHA: ${latestCommitSha}`);
-              }
-            } catch (repoError) {
-              console.log('无法获取仓库信息:', repoError.message);
-            }
-          }
-          
-          // 如果仍然没有SHA，尝试获取仓库的根目录内容来获取SHA
-          if (!latestCommitSha) {
-            try {
-              const rootContent = await octokit.rest.repos.getContent({
-                owner: repo.owner,
-                repo: repo.name,
-                path: ''
-              });
-              
-              // 如果根目录存在内容，使用其SHA
-              if (Array.isArray(rootContent.data) && rootContent.data.length > 0) {
-                // 获取最新的提交SHA
-                const commits = await octokit.rest.repos.listCommits({
-                  owner: repo.owner,
-                  repo: repo.name,
-                  per_page: 1
-                });
-                
-                if (commits.data.length > 0) {
-                  latestCommitSha = commits.data[0].sha;
-                  console.log(`从提交历史获取SHA: ${latestCommitSha}`);
-                }
-              }
-            } catch (contentError) {
-              console.log('无法获取根目录内容:', contentError.message);
-            }
-          }
-          
-          // 如果仍然没有SHA，说明这是一个完全空的仓库，我们需要先初始化它
-          if (!latestCommitSha) {
-            console.log('检测到空仓库，尝试初始化...');
-            
-            // 创建一个初始提交
-            await octokit.rest.repos.createOrUpdateFileContents({
-              owner: repo.owner,
-              repo: repo.name,
-              path: 'README.md',
-              message: '初始化仓库',
-              content: btoa(unescape(encodeURIComponent('# 图片存储仓库\n\n此仓库用于存储图片文件。'))),
-              branch: 'main'
-            });
-            
-            // 现在获取新创建的提交的SHA
-            const commits = await octokit.rest.repos.listCommits({
-              owner: repo.owner,
-              repo: repo.name,
-              per_page: 1
-            });
-            
-            if (commits.data.length > 0) {
-              latestCommitSha = commits.data[0].sha;
-              console.log(`初始化后获取SHA: ${latestCommitSha}`);
-            }
-          }
-          
-          // 如果仍然没有SHA，尝试获取public目录的SHA
-          if (!latestCommitSha) {
-            try {
-              const publicContent = await octokit.rest.repos.getContent({
-                owner: repo.owner,
-                repo: repo.name,
-                path: 'public'
-              });
-              
-              if (Array.isArray(publicContent.data) && publicContent.data.length > 0) {
-                // 获取public目录的SHA
-                const commits = await octokit.rest.repos.listCommits({
-                  owner: repo.owner,
-                  repo: repo.name,
-                  per_page: 1
-                });
-                
-                if (commits.data.length > 0) {
-                  latestCommitSha = commits.data[0].sha;
-                  console.log(`从public目录获取SHA: ${latestCommitSha}`);
-                }
-              }
-            } catch (publicError) {
-              console.log('无法获取public目录内容:', publicError.message);
-            }
-          }
-          
-          // 如果仍然没有SHA，说明这是一个完全空的仓库，我们需要先创建public目录
-          if (!latestCommitSha) {
-            console.log('创建public目录...');
-            
-            await octokit.rest.repos.createOrUpdateFileContents({
-              owner: repo.owner,
-              repo: repo.name,
-              path: 'public/.gitkeep',
-              message: '创建public目录',
-              content: btoa(unescape(encodeURIComponent(''))),
-              branch: 'main'
-            });
-            
-            // 获取新创建的提交的SHA
-            const commits = await octokit.rest.repos.listCommits({
-              owner: repo.owner,
-              repo: repo.name,
-              per_page: 1
-            });
-            
-            if (commits.data.length > 0) {
-              latestCommitSha = commits.data[0].sha;
-              console.log(`创建public目录后获取SHA: ${latestCommitSha}`);
-            }
-          }
-          
-          // 确保我们有SHA
-          if (!latestCommitSha) {
-            console.error('无法获取有效的SHA');
-            return new Response(JSON.stringify({
-              success: false,
-              error: '无法获取仓库状态，请检查仓库权限'
-            }), {
-              status: 500,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              }
-            });
-          }
-          
-          // 现在创建文件夹
-          const createFileParams = {
+          const branchInfo = await octokit.rest.repos.getBranch({
             owner: repo.owner,
             repo: repo.name,
-            path: `${folderPath}/README.md`,
-            message: `创建文件夹: ${folderName}`,
-            content: btoa(unescape(encodeURIComponent(placeholderContent))),
             branch: 'main'
-          };
+          });
+          latestCommitSha = branchInfo.data.commit.sha;
+          console.log(`获取到main分支SHA: ${latestCommitSha}`);
+        } catch (branchError) {
+          console.log('无法获取main分支信息，尝试获取默认分支:', branchError.message);
           
-          // 只有在有有效SHA时才添加sha参数
-          if (latestCommitSha) {
-            createFileParams.sha = latestCommitSha;
-            console.log(`使用SHA创建文件: ${latestCommitSha}`);
-          } else {
-            console.log('没有SHA，让GitHub自动处理');
-          }
-          
-          await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
-          
-          console.log(`成功创建文件夹: ${folderPath}`);
-          
-          // 保存文件夹信息到数据库
+          // 如果无法获取main分支，尝试获取仓库的默认分支
           try {
-            console.log(`准备插入数据库: repoId=${repoId}, folderName=${folderName.trim()}, folderPath=${folderPath}`);
-            console.log(`repoId类型: ${typeof repoId}, 值: ${repoId}`);
-            console.log(`folderName类型: ${typeof folderName.trim()}, 值: ${folderName.trim()}`);
-            console.log(`folderPath类型: ${typeof folderPath}, 值: ${folderPath}`);
-            
-            // 检查仓库是否存在
-            const repoCheck = await env.DB.prepare(`
-              SELECT id, name FROM repositories WHERE id = ?
-            `).bind(repoId).first();
-            
-            console.log(`仓库检查结果:`, repoCheck);
-            
-            if (!repoCheck) {
-              console.error(`仓库ID ${repoId} 不存在`);
-              return new Response(JSON.stringify({
-                success: false,
-                error: '仓库不存在'
-              }), {
-                status: 404,
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...corsHeaders
-                }
-              });
-            }
-            
-            // 确保repoId是数字类型
-            const numericRepoId = parseInt(repoId, 10);
-            console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
-            
-            const insertResult = await env.DB.prepare(`
-              INSERT INTO folders (name, path, repository_id, created_at, updated_at)
-              VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
-            `).bind(folderName.trim(), folderPath, numericRepoId).run();
-            
-            console.log(`插入结果:`, insertResult);
-            console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
-          } catch (dbError) {
-            console.error('保存文件夹信息到数据库失败:', dbError);
-            console.error('数据库错误详情:', {
-              message: dbError.message,
-              code: dbError.code,
-              errno: dbError.errno
+            const repoInfo = await octokit.rest.repos.get({
+              owner: repo.owner,
+              repo: repo.name
             });
-            // 不影响创建结果，只记录警告
-          }
-          
-          return new Response(JSON.stringify({
-            success: true,
-            message: '文件夹创建成功',
-            folderPath: folderPath
-          }), {
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
+            
+            const defaultBranch = repoInfo.data.default_branch;
+            console.log(`仓库默认分支: ${defaultBranch}`);
+            
+            if (defaultBranch && defaultBranch !== 'main') {
+              const defaultBranchInfo = await octokit.rest.repos.getBranch({
+                owner: repo.owner,
+                repo: repo.name,
+                branch: defaultBranch
+              });
+              latestCommitSha = defaultBranchInfo.data.commit.sha;
+              console.log(`获取到默认分支SHA: ${latestCommitSha}`);
             }
+          } catch (repoError) {
+            console.log('无法获取仓库信息:', repoError.message);
+          }
+        }
+        
+        // 如果仍然没有SHA，尝试获取仓库的根目录内容来获取SHA
+        if (!latestCommitSha) {
+          try {
+            const rootContent = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: ''
+            });
+            
+            // 如果根目录存在内容，使用其SHA
+            if (Array.isArray(rootContent.data) && rootContent.data.length > 0) {
+              // 获取最新的提交SHA
+              const commits = await octokit.rest.repos.listCommits({
+                owner: repo.owner,
+                repo: repo.name,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                latestCommitSha = commits.data[0].sha;
+                console.log(`从提交历史获取SHA: ${latestCommitSha}`);
+              }
+            }
+          } catch (contentError) {
+            console.log('无法获取根目录内容:', contentError.message);
+          }
+        }
+        
+        // 如果仍然没有SHA，尝试获取public目录的SHA
+        if (!latestCommitSha) {
+          try {
+            const publicContent = await octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: 'public'
+            });
+            
+            if (Array.isArray(publicContent.data) && publicContent.data.length > 0) {
+              // 获取public目录的SHA
+              const commits = await octokit.rest.repos.listCommits({
+                owner: repo.owner,
+                repo: repo.name,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                latestCommitSha = commits.data[0].sha;
+                console.log(`从public目录获取SHA: ${latestCommitSha}`);
+              }
+            }
+          } catch (publicError) {
+            console.log('无法获取public目录内容:', publicError.message);
+          }
+        }
+        
+        // 如果仍然没有SHA，说明这是一个完全空的仓库，我们需要先创建public目录
+        if (!latestCommitSha) {
+          console.log('创建public目录...');
+          
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner: repo.owner,
+            repo: repo.name,
+            path: 'public/.gitkeep',
+            message: '创建public目录',
+            content: btoa(unescape(encodeURIComponent(''))),
+            branch: 'main'
           });
           
-        } catch (error) {
-          console.error('创建文件夹失败:', error);
+          // 获取新创建的提交的SHA
+          const commits = await octokit.rest.repos.listCommits({
+            owner: repo.owner,
+            repo: repo.name,
+            per_page: 1
+          });
+          
+          if (commits.data.length > 0) {
+            latestCommitSha = commits.data[0].sha;
+            console.log(`创建public目录后获取SHA: ${latestCommitSha}`);
+          }
+        }
+        
+        // 确保我们有SHA
+        if (!latestCommitSha) {
+          console.error('无法获取有效的SHA');
           return new Response(JSON.stringify({
             success: false,
-            error: '创建文件夹失败: ' + error.message
+            error: '无法获取仓库状态，请检查仓库权限'
           }), {
             status: 500,
             headers: {
@@ -801,6 +678,88 @@ export async function onRequest(context) {
             }
           });
         }
+        
+        // 现在创建文件夹
+        const createFileParams = {
+          owner: repo.owner,
+          repo: repo.name,
+          path: `${folderPath}/README.md`,
+          message: `创建文件夹: ${folderName}`,
+          content: btoa(unescape(encodeURIComponent(placeholderContent))),
+          branch: 'main'
+        };
+        
+        // 只有在有有效SHA时才添加sha参数
+        if (latestCommitSha) {
+          createFileParams.sha = latestCommitSha;
+          console.log(`使用SHA创建文件: ${latestCommitSha}`);
+        } else {
+          console.log('没有SHA，让GitHub自动处理');
+        }
+        
+        await octokit.rest.repos.createOrUpdateFileContents(createFileParams);
+        
+        console.log(`成功创建文件夹: ${folderPath}`);
+        
+        // 保存文件夹信息到数据库
+        try {
+          console.log(`准备插入数据库: repoId=${repoId}, folderName=${folderName.trim()}, folderPath=${folderPath}`);
+          console.log(`repoId类型: ${typeof repoId}, 值: ${repoId}`);
+          console.log(`folderName类型: ${typeof folderName.trim()}, 值: ${folderName.trim()}`);
+          console.log(`folderPath类型: ${typeof folderPath}, 值: ${folderPath}`);
+          
+          // 检查仓库是否存在
+          const repoCheck = await env.DB.prepare(`
+            SELECT id, name FROM repositories WHERE id = ?
+          `).bind(repoId).first();
+          
+          console.log(`仓库检查结果:`, repoCheck);
+          
+          if (!repoCheck) {
+            console.error(`仓库ID ${repoId} 不存在`);
+            return new Response(JSON.stringify({
+              success: false,
+              error: '仓库不存在'
+            }), {
+              status: 404,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders
+              }
+            });
+          }
+          
+          // 确保repoId是数字类型
+          const numericRepoId = parseInt(repoId, 10);
+          console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
+          
+          const insertResult = await env.DB.prepare(`
+            INSERT INTO folders (name, path, repository_id, created_at, updated_at)
+            VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
+          `).bind(folderName.trim(), folderPath, numericRepoId).run();
+          
+          console.log(`插入结果:`, insertResult);
+          console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+        } catch (dbError) {
+          console.error('保存文件夹信息到数据库失败:', dbError);
+          console.error('数据库错误详情:', {
+            message: dbError.message,
+            code: dbError.code,
+            errno: dbError.errno
+          });
+          // 不影响创建结果，只记录警告
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: '文件夹创建成功',
+          folderPath: folderPath
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
         
       } catch (error) {
         console.error('处理创建文件夹请求失败:', error);
