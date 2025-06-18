@@ -136,19 +136,21 @@ async function syncRepositorySize(env, repoId) {
  * @returns {Promise<Response>} - 响应对象
  */
 export async function onRequest(context) {
+  console.log('=== repositories.js 被调用 ===');
+  
   try {
-  const { request, env } = context;
-  const url = new URL(request.url);
-    const path = url.pathname.replace('/api/repositories', '').replace(/^\/+/, '');
-    
-    console.log('处理仓库管理请求:', {
-      fullPath: url.pathname,
-      method: request.method,
-      path: path,
-      url: request.url,
-      pathStartsWithCreateFolder: path.startsWith('create-folder/'),
-      pathLength: path.length
-    });
+    const { request, env } = context;
+    const url = new URL(request.url);
+      const path = url.pathname.replace('/api/repositories', '').replace(/^\/+/, '');
+      
+      console.log('处理仓库管理请求:', {
+        fullPath: url.pathname,
+        method: request.method,
+        path: path,
+        url: request.url,
+        pathStartsWithCreateFolder: path.startsWith('create-folder/'),
+        pathLength: path.length
+      });
   
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
