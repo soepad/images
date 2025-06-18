@@ -2405,6 +2405,157 @@ export async function onRequest(context) {
       }
     }
 
+    // 添加调试模式检查
+    const isDebugMode = request.headers.get('X-Debug-Mode') === 'true' || url.searchParams.has('debug');
+    
+    // 处理 repositories/create-folder 路径
+    if (path.match(/^repositories\/create-folder\/(\d+)$/) && request.method === 'POST') {
+      console.log('=== 在[[path]].js中处理create-folder请求 ===');
+      
+      try {
+        // 检查用户会话
+        const session = await checkSession(request, env);
+        if (!session) { 
+          return jsonResponse({ error: '未授权访问' }, 401); 
+        }
+
+        // 提取仓库ID
+        const repoId = parseInt(path.match(/^repositories\/create-folder\/(\d+)$/)[1], 10);
+        if (isNaN(repoId)) { 
+          return jsonResponse({ error: '无效的仓库ID' }, 400); 
+        }
+
+        // 解析请求体
+        const requestData = await request.json();
+        const { folderName } = requestData;
+        
+        if (!folderName || !folderName.trim()) {
+          return jsonResponse({ error: '文件夹名称不能为空' }, 400);
+        }
+        
+        console.log(`创建文件夹请求: 仓库ID=${repoId}, 文件夹名=${folderName}`);
+        
+        // 获取仓库信息
+        const repo = await env.DB.prepare(`
+          SELECT * FROM repositories WHERE id = ?
+        `).bind(repoId).first();
+        
+        if (!repo) {
+          return jsonResponse({ error: '仓库不存在' }, 404);
+        }
+        
+        // 创建Octokit实例
+        const octokit = new Octokit({
+          auth: repo.token || env.GITHUB_TOKEN
+        });
+        
+        // 创建文件夹路径
+        const folderPath = `public/${folderName.trim()}`;
+        
+        // 检查文件夹是否已存在
+        try {
+          await octokit.rest.repos.getContent({
+            owner: repo.owner,
+            repo: repo.name,
+            path: folderPath
+          });
+          
+          return jsonResponse({ error: '文件夹已存在' }, 409);
+        } catch (error) {
+          if (error.status !== 404) {
+            console.error('检查文件夹是否存在时出错:', error);
+            return jsonResponse({ error: '检查文件夹状态失败' }, 500);
+          }
+          // 404表示文件夹不存在，继续创建
+        }
+        
+        // 创建文件夹（通过创建一个占位文件）
+        const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+        
+        try {
+          console.log(`开始创建文件夹: ${folderPath}`);
+          await octokit.rest.repos.createFile({
+            owner: repo.owner,
+            repo: repo.name,
+            path: `${folderPath}/README.md`,
+            message: `创建文件夹: ${folderName}`,
+            content: btoa(unescape(encodeURIComponent(placeholderContent))),
+            branch: 'main'
+          });
+          
+          console.log(`成功创建文件夹: ${folderPath}`);
+        } catch (createError) {
+          console.error('创建文件夹失败:', createError);
+          return jsonResponse({ 
+            error: '创建文件夹失败: ' + createError.message 
+          }, 500);
+        }
+        
+        // 保存文件夹信息到数据库
+        let dbSuccess = false;
+        try {
+          console.log(`准备插入数据库: repoId=${repoId}, folderName=${folderName.trim()}, folderPath=${folderPath}`);
+          
+          // 检查仓库是否存在
+          const repoCheck = await env.DB.prepare(`
+            SELECT id, name FROM repositories WHERE id = ?
+          `).bind(repoId).first();
+          
+          console.log(`仓库检查结果:`, repoCheck);
+          
+          if (!repoCheck) {
+            console.error(`仓库ID ${repoId} 不存在`);
+            console.warn('仓库不存在，但GitHub文件夹已创建成功');
+          } else {
+            // 确保repoId是数字类型
+            const numericRepoId = parseInt(repoId, 10);
+            console.log(`转换后的repoId: ${numericRepoId}, 类型: ${typeof numericRepoId}`);
+            
+            // 检查文件夹是否已存在
+            const existingFolder = await env.DB.prepare(`
+              SELECT id FROM folders WHERE path = ?
+            `).bind(folderPath).first();
+            
+            if (!existingFolder) {
+              const insertResult = await env.DB.prepare(`
+                INSERT INTO folders (name, path, repository_id, created_at, updated_at)
+                VALUES (?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
+              `).bind(folderName.trim(), folderPath, numericRepoId).run();
+              
+              console.log(`插入结果:`, insertResult);
+              console.log(`文件夹信息已保存到数据库: ${folderName}, repository_id: ${numericRepoId}`);
+              dbSuccess = true;
+            } else {
+              console.log('文件夹已存在于数据库中，跳过插入');
+              dbSuccess = true;
+            }
+          }
+        } catch (dbError) {
+          console.error('保存文件夹信息到数据库失败:', dbError);
+          console.error('数据库错误详情:', {
+            message: dbError.message,
+            code: dbError.code,
+            errno: dbError.errno
+          });
+          // 不影响创建结果，只记录警告
+        }
+        
+        // 返回成功响应，因为GitHub上的文件夹已经创建成功
+        return jsonResponse({
+          success: true,
+          message: '文件夹创建成功',
+          folderPath: folderPath,
+          dbSuccess: dbSuccess
+        });
+        
+      } catch (error) {
+        console.error('处理创建文件夹请求失败:', error);
+        return jsonResponse({ 
+          error: '处理创建文件夹请求失败: ' + error.message 
+        }, 500);
+      }
+    }
+
     // 如果没有匹配的路由，返回 404
     console.log('未找到匹配的路由:', path);
     return new Response(JSON.stringify({
