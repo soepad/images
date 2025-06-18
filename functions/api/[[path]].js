@@ -1901,8 +1901,8 @@ export async function onRequest(context) {
             
             // 在数据库中创建仓库记录
             const dbResult = await env.DB.prepare(`
-              INSERT INTO repositories (name, owner, token, status, created_at)
-              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+              INSERT INTO repositories (name, owner, token, status, created_at, updated_at)
+              VALUES (?, ?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
             `).bind(
               repoName,
               env.GITHUB_OWNER,
@@ -1941,8 +1941,8 @@ export async function onRequest(context) {
             
             // 在数据库中创建仓库记录
             const dbResult = await env.DB.prepare(`
-              INSERT INTO repositories (name, owner, token, status, created_at)
-              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+              INSERT INTO repositories (name, owner, token, status, created_at, updated_at)
+              VALUES (?, ?, ?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
             `).bind(
               repoName,
               env.GITHUB_OWNER,
@@ -2099,17 +2099,26 @@ export async function onRequest(context) {
           
           console.log(`成功创建文件夹: ${folderPath}`);
           
-          // 将文件夹信息保存到数据库
-          try {
-            await env.DB.prepare(`
-              INSERT INTO folders (name, path) 
-              VALUES (?, ?)
-            `).bind(folderName.trim(), folderPath).run();
-            
-            console.log('文件夹信息已保存到数据库');
-          } catch (dbError) {
-            console.error('保存文件夹信息到数据库失败:', dbError);
-            // 即使数据库保存失败，GitHub上的文件夹已经创建成功，所以不返回错误
+          // 检查文件夹是否已经在数据库中
+          const existingFolder = await env.DB.prepare(`
+            SELECT id FROM folders WHERE path = ?
+          `).bind(folderPath).first();
+          
+          if (!existingFolder) {
+            // 将文件夹信息保存到数据库
+            try {
+              await env.DB.prepare(`
+                INSERT INTO folders (name, path, created_at, updated_at) 
+                VALUES (?, ?, datetime('now', '+8 hours'), datetime('now', '+8 hours'))
+              `).bind(folderName.trim(), folderPath).run();
+              
+              console.log('文件夹信息已保存到数据库');
+            } catch (dbError) {
+              console.error('保存文件夹信息到数据库失败:', dbError);
+              // 即使数据库保存失败，GitHub上的文件夹已经创建成功，所以不返回错误
+            }
+          } else {
+            console.log('文件夹已存在于数据库中');
           }
           
           return jsonResponse({
