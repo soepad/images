@@ -2490,7 +2490,7 @@ export async function onRequest(context) {
           });
           console.log('getContent public/量子力学32 结果:', folderInfo);
         } catch (e) {
-          console.error('getContent public/量子力学32 出错:', e);
+          console.error('getContent public/量子力学32 出错:', e, e.status, e.response, e.message);
         }
 
         console.log('准备调用octokit.createOrUpdateFileContents');
@@ -2595,9 +2595,12 @@ export async function onRequest(context) {
         });
         
       } catch (error) {
-        console.error('处理创建文件夹请求失败:', error);
+        console.error('处理创建文件夹请求失败:', error, error.status, error.response, error.message, error.stack);
         return jsonResponse({ 
-          error: '处理创建文件夹请求失败: ' + error.message 
+          error: '处理创建文件夹请求失败: ' + error.message,
+          stack: error.stack,
+          status: error.status,
+          response: error.response
         }, 500);
       }
     }
