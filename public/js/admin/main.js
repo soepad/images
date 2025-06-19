@@ -3867,7 +3867,7 @@ function uploadToFolder(folderName) {
                 formData.append('folderName', folderName);
                 // 可选：可以加仓库ID等参数
                 // 发起上传请求
-                const response = await fetch('/api/upload', {
+                const response = await fetch('/api/upload?action=upload', {
                     method: 'POST',
                     body: formData,
                     credentials: 'include'
