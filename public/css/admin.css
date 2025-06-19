@@ -2504,7 +2504,7 @@ body.mobile-view .image-checkbox {
     flex-direction: row;
 }
 .responsive-folder-stats .stat-row.stat-date {
-    display: flex;
+    display: block;
     align-items: center;
     margin-top: 2px;
     margin-bottom: 0;
