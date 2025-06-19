@@ -2585,9 +2585,14 @@ body.mobile-view .image-checkbox {
 }
 .wide-modal-content {
     min-width: 0;
-    max-width: 800px;
+    max-width: calc(100vw - 300px);
     width: 100%;
     margin: 0 auto;
+}
+@media (max-width: 900px) {
+    .wide-modal-content {
+        max-width: 98vw;
+    }
 }
 .file-list-table {
     width: 100%;
