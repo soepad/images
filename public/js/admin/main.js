@@ -3707,33 +3707,38 @@ function openFolder(folderId, folderName) {
 function displayFolderContents(folder, files) {
     // 创建模态框显示文件夹内容
     const modal = document.createElement('div');
-    modal.className = 'modal';
+    modal.className = 'modal wide-modal';
     modal.id = 'folderContentsModal';
     
+    // 文件列表表头
+    const fileTableHeader = `
+        <div class="file-list-header">
+            <span class="file-col file-col-checkbox"><input type="checkbox" class="file-select-all" onclick="toggleSelectAllFiles(this)"></span>
+            <span class="file-col file-col-index">#</span>
+            <span class="file-col file-col-name">文件名</span>
+            <span class="file-col file-col-size">大小</span>
+            <span class="file-col file-col-repo">仓库</span>
+            <span class="file-col file-col-actions">操作</span>
+        </div>
+    `;
+    // 文件列表内容
     const filesList = files.length > 0 ? 
-        files.map(file => `
-            <div class="file-item" data-file-id="${file.id}">
-                <div class="file-info">
-                    <div class="file-icon">
-                        <i class="fas fa-file"></i>
-                    </div>
-                    <div class="file-details">
-                        <div class="file-name">${file.filename}</div>
-                        <div class="file-meta">
-                            <span class="file-size">${formatFileSize(file.size)}</span>
-                            <span class="file-repo">${file.repository_name}</span>
-                            <span class="file-date">${formatDate(file.created_at)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="file-actions">
+        fileTableHeader +
+        files.map((file, idx) => `
+            <div class="file-list-row" data-file-id="${file.id}">
+                <span class="file-col file-col-checkbox"><input type="checkbox" class="file-select" data-file-id="${file.id}"></span>
+                <span class="file-col file-col-index">${idx + 1}</span>
+                <span class="file-col file-col-name">${file.filename}</span>
+                <span class="file-col file-col-size">${formatFileSize(file.size)}</span>
+                <span class="file-col file-col-repo">${file.repository_name}</span>
+                <span class="file-col file-col-actions">
                     <button class="btn btn-sm btn-outline-primary" onclick="copyFileUrl('${file.github_path}')">
                         <i class="fas fa-copy"></i> 复制链接
                     </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
                         <i class="fas fa-trash"></i> 删除
                     </button>
-                </div>
+                </span>
             </div>
         `).join('') : 
         `<div class="empty-folder">
@@ -3746,7 +3751,7 @@ function displayFolderContents(folder, files) {
         </div>`;
     
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content wide-modal-content">
             <div class="modal-header">
                 <h3>文件夹: ${folder.name}</h3>
                 <button class="close-btn" onclick="closeFolderModal()">&times;</button>
@@ -3756,7 +3761,7 @@ function displayFolderContents(folder, files) {
                     <span class="folder-path">${folder.path}</span>
                     <span class="file-count">${files.length} 个文件</span>
                 </div>
-                <div class="files-container">
+                <div class="files-container file-list-table">
                     ${filesList}
                 </div>
             </div>
