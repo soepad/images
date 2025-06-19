@@ -2501,6 +2501,7 @@ body.mobile-view .image-checkbox {
     align-items: center;
     gap: 32px;
     margin-bottom: 0;
+    flex-direction: row;
 }
 .responsive-folder-stats .stat-row.stat-date {
     display: flex;
@@ -2508,6 +2509,14 @@ body.mobile-view .image-checkbox {
     margin-top: 2px;
     margin-bottom: 0;
     gap: 0;
+}
+.responsive-folder-stats .stat-item {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+.responsive-folder-stats .stat-item i {
+    margin-right: 6px;
 }
 @media (max-width: 768px) {
     .folder-grid, .image-grid {
@@ -2528,6 +2537,7 @@ body.mobile-view .image-checkbox {
     .responsive-folder-stats .stat-item {
         display: block;
         margin-bottom: 4px;
+        white-space: normal;
     }
     .responsive-folder-stats .stat-row.stat-date {
         margin-top: 0;
