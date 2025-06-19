@@ -2528,7 +2528,7 @@ export async function onRequest(context) {
           repo: repo.name,
           path: `${folderPath}/${fileName}`,
           message: `创建文件夹: ${folderName}`,
-          content: btoa(unescape(encodeURIComponent(placeholderContent))),
+          content: '', // 直接传标准 base64 空字符串
           branch: 'main'
         };
         if (sha) params.sha = sha;
