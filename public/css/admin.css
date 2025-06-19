@@ -2546,4 +2546,16 @@ body.mobile-view .image-checkbox {
     .responsive-folder-stats .stat-row.stat-date {
         margin-top: 0;
     }
+}
+
+.stat-date-row {
+    display: block;
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.stat-date-row i {
+    margin-right: 6px;
+    color: var(--primary-color);
 } 
