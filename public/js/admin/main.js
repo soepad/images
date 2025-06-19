@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 异步初始化其他功能，确保不会阻塞UI
         setTimeout(() => {
             console.log('初始化控制面板');
-            initDashboard();
+    initDashboard();
             
             // 根据当前页面初始化相应的功能
             const currentPage = document.querySelector('.nav-menu li.active');
@@ -196,15 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             console.log('初始化仓库管理');
-            initRepositoryManagement();
+    initRepositoryManagement();
             console.log('初始化批量操作');
             initBatchOperations();
             console.log('初始化系统设置');
-            initSettings();
+    initSettings();
             
             // 初始化上传模态框
             console.log('初始化上传模态框');
-            initUploadModal();
+    initUploadModal();
             
             // 添加图片复选框变化事件委托
             document.addEventListener('change', function(e) {
@@ -588,7 +588,7 @@ function initSettings() {
                             if (allowedTypesValue === '*/*' || allowedTypesValue === '*') {
                                 allowedFileTypes = ['*/*'];
                             } else {
-                                allowedFileTypes = allowedTypesValue.split(',');
+                            allowedFileTypes = allowedTypesValue.split(',');
                             }
                         }
                     } else {
@@ -741,7 +741,7 @@ async function loadAllowedFileTypes() {
             if (response.allowed_types === '*/*' || response.allowed_types === '*') {
                 allowedFileTypes = ['*/*'];
             } else {
-                allowedFileTypes = response.allowed_types.split(',');
+            allowedFileTypes = response.allowed_types.split(',');
             }
             console.log('已加载允许的文件类型:', allowedFileTypes);
         } else {
@@ -974,19 +974,19 @@ function initImageManagement() {
     const searchInput = document.getElementById('searchInput');
     const sortSelect = document.getElementById('sortSelect');
     const uploadBtn = document.getElementById('uploadBtn');
-    
+
     if (searchInput) {
     // 搜索功能
-        let searchTimeout;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
+    let searchTimeout;
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
                 currentSearch = e.target.value.trim();
-                currentPage = 1;
-                loadImages();
+            currentPage = 1;
+            loadImages();
         }, 300);
-        });
-        
+    });
+
         // 确保回车键也能触发搜索
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -999,14 +999,14 @@ function initImageManagement() {
     } else {
         console.warn('未找到搜索输入框');
     }
-    
+
     if (sortSelect) {
     // 排序功能
-        sortSelect.addEventListener('change', (e) => {
-            currentSort = e.target.value;
-            currentPage = 1;
-            loadImages();
-        });
+    sortSelect.addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        currentPage = 1;
+        loadImages();
+    });
     } else {
         console.warn('未找到排序选择框');
     }
@@ -2418,22 +2418,22 @@ function positionDropdownMenu(menu, triggerElement) {
             }
         }, 10); // 稍微延长超时确保DOM更新
     }
-}
-
-// 清理上传状态的函数
-function resetUploadState() {
-    console.log('重置上传状态');
+    }
+    
+    // 清理上传状态的函数
+    function resetUploadState() {
+        console.log('重置上传状态');
     const modal = document.getElementById('uploadModal');
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
     
-    // 清除文件输入框值
-    if (fileInput) fileInput.value = '';
-    
-    // 重新显示上传区域
-    if (uploadArea) uploadArea.style.display = 'block';
-    
-    // 清除文件列表和确认按钮
+        // 清除文件输入框值
+        if (fileInput) fileInput.value = '';
+        
+        // 重新显示上传区域
+        if (uploadArea) uploadArea.style.display = 'block';
+        
+        // 清除文件列表和确认按钮
     if (modal) {
         const modalBody = modal.querySelector('.modal-body');
         if (modalBody) {
@@ -2443,11 +2443,11 @@ function resetUploadState() {
             if (fileList) fileList.remove();
             if (confirmBtn) confirmBtn.remove();
         }
-    }
-    
-    // 隐藏进度条
-    const uploadProgress = document.querySelector('.upload-progress');
-    if (uploadProgress) uploadProgress.style.display = 'none';
+        }
+        
+        // 隐藏进度条
+        const uploadProgress = document.querySelector('.upload-progress');
+        if (uploadProgress) uploadProgress.style.display = 'none';
 }
 
 // 初始化上传模态框
@@ -2676,8 +2676,8 @@ async function uploadSelectedFiles(files) {
             overallProgress = completedContribution + (currentFileProgress * currentFileContribution);
         } else {
             // 普通上传：直接计算
-            const fileContribution = uploaded / totalSize;
-            const completedContribution = uploadedBytes / totalSize;
+        const fileContribution = uploaded / totalSize;
+        const completedContribution = uploadedBytes / totalSize;
             overallProgress = completedContribution + fileContribution;
         }
         
@@ -3213,7 +3213,6 @@ async function updateRepositoryStatus(repoId, status, button) {
 // 显示新建文件夹模态框
 function showCreateFolderModal(repoId, repoName, repoOwner) {
     console.log('显示创建文件夹模态框:', { repoId, repoName, repoOwner });
-    
     try {
         // 设置目标仓库信息
         const targetRepoInfo = document.getElementById('targetRepoInfo');
@@ -3222,15 +3221,15 @@ function showCreateFolderModal(repoId, repoName, repoOwner) {
         } else {
             console.error('未找到targetRepoInfo元素');
         }
-        
+
         // 设置仓库ID到确认按钮
-        const confirmBtn = document.getElementById('confirmCreateFolder');
+        let confirmBtn = document.getElementById('confirmCreateFolder');
         if (confirmBtn) {
             confirmBtn.dataset.repoId = repoId;
         } else {
             console.error('未找到confirmCreateFolder元素');
         }
-        
+
         // 清空输入框
         const folderNameInput = document.getElementById('folderName');
         if (folderNameInput) {
@@ -3247,9 +3246,9 @@ function showCreateFolderModal(repoId, repoName, repoOwner) {
         } else {
             console.error('未找到createFolderModal元素');
             showNotification('模态框加载失败', 'error');
-            return;
-        }
-        
+        return;
+    }
+    
         // 聚焦到输入框
         setTimeout(() => {
             if (folderNameInput) {
@@ -3388,29 +3387,6 @@ function initRepositoryButtons() {
         confirmCreateRepo.addEventListener('click', createRepository);
     }
     
-    // 确认创建文件夹按钮
-    const confirmCreateFolder = document.getElementById('confirmCreateFolder');
-    if (confirmCreateFolder) {
-        console.log('找到确认创建文件夹按钮，绑定事件');
-        confirmCreateFolder.addEventListener('click', () => {
-            console.log('创建文件夹按钮被点击');
-            const folderName = document.getElementById('folderName').value.trim();
-            if (!folderName) {
-                showNotification('请输入文件夹名称', 'error');
-                return;
-            }
-            
-            const repoId = confirmCreateFolder.dataset.repoId;
-            console.log('仓库ID:', repoId, '文件夹名称:', folderName);
-            if (repoId) {
-                createFolder(repoId, folderName);
-            } else {
-                showNotification('仓库信息丢失，请重试', 'error');
-            }
-        });
-    } else {
-        console.warn('未找到确认创建文件夹按钮');
-    }
     
     // 关闭模态框按钮 - 使用事件委托
     document.addEventListener('click', (e) => {
@@ -4252,4 +4228,3 @@ function showUploadModal() {
     }
 }
 
-        
