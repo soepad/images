@@ -2553,7 +2553,8 @@ export async function onRequest(context) {
               headers: {
                 'Authorization': `token ${repo.token || env.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'User-Agent': 'cfworker-github-folder-create'
               },
               body: JSON.stringify(body)
             }),
