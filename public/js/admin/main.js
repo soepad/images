@@ -3843,12 +3843,55 @@ async function deleteFile(fileId) {
     }
 }
 
-// 上传到指定文件夹
+// 上传到指定文件夹（重构：直接选择文件并上传到该文件夹）
 function uploadToFolder(folderName) {
-    showNotification(`准备上传到文件夹: ${folderName}`, 'info');
-    // 这里可以打开上传模态框并设置目标文件夹
-    showUploadModal();
-    // TODO: 在上传时指定目标文件夹
+    // 创建一个临时的 input[type=file]
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    fileInput.addEventListener('change', async (e) => {
+        const files = Array.from(fileInput.files);
+        if (files.length === 0) {
+            document.body.removeChild(fileInput);
+            return;
+        }
+        showNotification(`正在上传到文件夹: ${folderName} ...`, 'info');
+        try {
+            for (const file of files) {
+                // 构造 FormData
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folderName', folderName);
+                // 可选：可以加仓库ID等参数
+                // 发起上传请求
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(`文件 ${file.name} 上传成功`, 'success');
+                } else {
+                    showNotification(`文件 ${file.name} 上传失败: ${result.error || '未知错误'}`, 'error');
+                }
+            }
+            // 上传完成后刷新当前文件夹内容
+            const modal = document.getElementById('folderContentsModal');
+            if (modal && modal.dataset.folderId && modal.dataset.folderName) {
+                openFolder(modal.dataset.folderId, modal.dataset.folderName);
+            }
+        } catch (error) {
+            showNotification(`上传失败: ${error.message}`, 'error');
+        } finally {
+            document.body.removeChild(fileInput);
+        }
+    });
+    // 触发文件选择
+    fileInput.click();
 }
 
 function showFolderMenu(event, folderId) {
