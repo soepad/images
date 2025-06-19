@@ -1976,35 +1976,30 @@ export async function onRequest(context) {
     if (path === 'folders' && request.method === 'GET') {
       try {
         console.log('处理获取文件夹列表请求');
-        
         // 检查用户会话
         const session = await checkSession(request, env);
         if (!session) { 
           return jsonResponse({ error: '未授权访问' }, 401); 
         }
-
-        // 获取所有文件夹及其统计信息
+        // 获取所有文件夹及其统计信息（查 folder_files）
         const folders = await env.DB.prepare(`
           SELECT 
             f.id,
             f.name,
             f.path,
             f.created_at,
-            COALESCE(SUM(i.size), 0) as total_size,
-            COUNT(i.id) as file_count
+            COALESCE(SUM(ff.size), 0) as total_size,
+            COUNT(ff.id) as file_count
           FROM folders f
-          LEFT JOIN images i ON i.github_path LIKE f.path || '/%'
+          LEFT JOIN folder_files ff ON ff.folder_id = f.id
           GROUP BY f.id, f.name, f.path, f.created_at
           ORDER BY f.created_at DESC
         `).all();
-        
         console.log(`找到 ${folders.results.length} 个文件夹`);
-        
         return jsonResponse({
           success: true,
           data: folders.results
         });
-        
       } catch (error) {
         console.error('获取文件夹列表失败:', error);
         return jsonResponse({ 
