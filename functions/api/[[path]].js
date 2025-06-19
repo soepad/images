@@ -2534,17 +2534,39 @@ export async function onRequest(context) {
         if (sha) params.sha = sha;
 
         // 日志：打印即将调用的参数
-        console.log('即将调用 octokit.createOrUpdateFileContents，参数：', JSON.stringify(params));
+        console.log('即将调用 GitHub API (fetch PUT /contents)，参数：', JSON.stringify(params));
 
+        // 用 fetch 直接调用 GitHub API
         try {
-          const result = await Promise.race([
-            octokit.rest.repos.createOrUpdateFileContents(params),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('createOrUpdateFileContents超时')), 10000))
+          const url = `https://api.github.com/repos/${repo.owner}/${repo.name}/contents/${encodeURIComponent(folderPath)}/.gitkeep`;
+          const body = {
+            message: `创建文件夹: ${folderName}`,
+            content: '', // base64 空字符串
+            branch: 'main'
+          };
+          if (sha) body.sha = sha;
+          console.log('fetch PUT url:', url);
+          console.log('fetch PUT body:', JSON.stringify(body));
+          const response = await Promise.race([
+            fetch(url, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `token ${repo.token || env.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(body)
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GitHub API fetch 超时')), 10000))
           ]);
-          console.log('octokit.createOrUpdateFileContents 调用完成，返回结果：', JSON.stringify(result));
+          const result = await response.json();
+          console.log('GitHub API 返回:', JSON.stringify(result));
+          if (!response.ok) {
+            throw new Error(result.message || 'GitHub API error');
+          }
         } catch (createError) {
           // 日志：详细打印异常的所有属性
-          console.error('octokit.createOrUpdateFileContents 调用出错:', {
+          console.error('GitHub API (fetch PUT /contents) 调用出错:', {
             name: createError.name,
             message: createError.message,
             stack: createError.stack,
