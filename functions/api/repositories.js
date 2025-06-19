@@ -674,7 +674,7 @@ export async function onRequest(context) {
     try {
       const repoId = parseInt(path.replace('/status/', ''));
       
-        if (isNaN(repoId)) {
+      if (isNaN(repoId)) {
         return new Response(JSON.stringify({
           success: false,
           error: '无效的仓库ID'
@@ -686,14 +686,14 @@ export async function onRequest(context) {
           }
         });
       }
-        
-        const requestData = await request.json();
-        const { status } = requestData;
-        
-        if (!status) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: '状态值不能为空'
+      
+      const requestData = await request.json();
+      const { status } = requestData;
+      
+      if (!status) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '状态值不能为空'
         }), {
           status: 400,
           headers: {
