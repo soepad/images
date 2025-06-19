@@ -2482,32 +2482,41 @@ export async function onRequest(context) {
 
         // 先检查要创建的文件夹路径在GitHub上的真实状态
         try {
-          const folderInfo = await octokit.rest.repos.getContent({
-            owner: repo.owner,
-            repo: repo.name,
-            path: folderPath,
-            ref: 'main'
-          });
+          const folderInfo = await Promise.race([
+            octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: folderPath,
+              ref: 'main'
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('getContent超时')), 10000))
+          ]);
           console.log('getContent public/量子力学32 结果:', folderInfo);
         } catch (e) {
-          console.error('getContent public/量子力学32 出错:', e, e.status, e.response, e.message);
+          console.error('getContent public/量子力学32 出错:', e, e.status, e.response, e.message, e.stack);
         }
 
         console.log('准备调用octokit.createOrUpdateFileContents');
         let sha = undefined;
         try {
-          const fileInfo = await octokit.rest.repos.getContent({
-            owner: repo.owner,
-            repo: repo.name,
-            path: `${folderPath}/${fileName}`,
-          });
+          const fileInfo = await Promise.race([
+            octokit.rest.repos.getContent({
+              owner: repo.owner,
+              repo: repo.name,
+              path: `${folderPath}/${fileName}`,
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('getContent(.gitkeep)超时')), 10000))
+          ]);
           sha = fileInfo.data.sha;
           console.log(`${fileName}已存在，sha:`, sha);
         } catch (e) {
           if (e.status !== 404) {
-            console.error(`getContent查sha出错:`, e);
+            console.error(`getContent查sha出错:`, e, e.status, e.response, e.message, e.stack);
             return jsonResponse({
-              error: '查sha失败: ' + e.message
+              error: '查sha失败: ' + e.message,
+              stack: e.stack,
+              status: e.status,
+              response: e.response
             }, 500);
           } else {
             console.log(`${fileName}不存在，将新建`);
@@ -2527,13 +2536,16 @@ export async function onRequest(context) {
         try {
           const result = await Promise.race([
             octokit.rest.repos.createOrUpdateFileContents(params),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('octokit超时')), 10000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('createOrUpdateFileContents超时')), 10000))
           ]);
           console.log('octokit.createOrUpdateFileContents调用完成', result);
         } catch (createError) {
-          console.error('octokit.createOrUpdateFileContents调用出错:', createError);
+          console.error('octokit.createOrUpdateFileContents调用出错:', createError, createError.status, createError.response, createError.message, createError.stack);
           return jsonResponse({
-            error: '创建文件夹失败: ' + createError.message
+            error: '创建文件夹失败: ' + createError.message,
+            stack: createError.stack,
+            status: createError.status,
+            response: createError.response
           }, 500);
         }
         
