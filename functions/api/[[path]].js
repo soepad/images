@@ -2541,7 +2541,7 @@ export async function onRequest(context) {
           const url = `https://api.github.com/repos/${repo.owner}/${repo.name}/contents/${encodeURIComponent(folderPath)}/.gitkeep`;
           const body = {
             message: `创建文件夹: ${folderName}`,
-            content: '', // base64 空字符串
+            content: btoa(''), // base64 空字符串
             branch: 'main'
           };
           if (sha) body.sha = sha;
@@ -2559,10 +2559,16 @@ export async function onRequest(context) {
             }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('GitHub API fetch 超时')), 10000))
           ]);
-          const result = await response.json();
-          console.log('GitHub API 返回:', JSON.stringify(result));
+          const text = await response.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch (e) {
+            result = { raw: text };
+          }
+          console.log('GitHub API 返回:', result);
           if (!response.ok) {
-            throw new Error(result.message || 'GitHub API error');
+            throw new Error(result.message || result.raw || 'GitHub API error');
           }
         } catch (createError) {
           // 日志：详细打印异常的所有属性
