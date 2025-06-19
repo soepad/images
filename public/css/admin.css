@@ -2585,7 +2585,7 @@ body.mobile-view .image-checkbox {
 }
 .wide-modal-content {
     min-width: 0;
-    max-width: 700px;
+    max-width: 800px;
     width: 100%;
     margin: 0 auto;
 }
