@@ -2477,7 +2477,8 @@ export async function onRequest(context) {
         }
         
         // 创建文件夹（通过创建一个占位文件）
-        const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+        const placeholderContent = '';
+        const fileName = '.gitkeep';
 
         // 先检查要创建的文件夹路径在GitHub上的真实状态
         try {
@@ -2491,32 +2492,32 @@ export async function onRequest(context) {
         } catch (e) {
           console.error('getContent public/量子力学32 出错:', e);
         }
-        
+
         console.log('准备调用octokit.createOrUpdateFileContents');
         let sha = undefined;
         try {
           const fileInfo = await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
-            path: `${folderPath}/README.md`,
+            path: `${folderPath}/${fileName}`,
           });
           sha = fileInfo.data.sha;
-          console.log('README.md已存在，sha:', sha);
+          console.log(`${fileName}已存在，sha:`, sha);
         } catch (e) {
           if (e.status !== 404) {
-            console.error('getContent查sha出错:', e);
+            console.error(`getContent查sha出错:`, e);
             return jsonResponse({
               error: '查sha失败: ' + e.message
             }, 500);
           } else {
-            console.log('README.md不存在，将新建');
+            console.log(`${fileName}不存在，将新建`);
           }
         }
 
         const params = {
           owner: repo.owner,
           repo: repo.name,
-          path: `${folderPath}/README.md`,
+          path: `${folderPath}/${fileName}`,
           message: `创建文件夹: ${folderName}`,
           content: btoa(unescape(encodeURIComponent(placeholderContent))),
           branch: 'main'
