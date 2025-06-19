@@ -3649,7 +3649,6 @@ function createFolderCard(folder) {
     const size = formatFileSize(folder.total_size || 0);
     const fileCount = folder.file_count || 0;
     const createdAt = formatDate(folder.created_at);
-    
     return `
         <div class="folder-card" data-folder-id="${folder.id}">
             <div class="folder-header">
@@ -3668,18 +3667,13 @@ function createFolderCard(folder) {
                     </button>
                 </div>
             </div>
-            <div class="folder-stats">
-                <div class="stat-item">
-                    <i class="fas fa-file"></i>
-                    <span>${fileCount} 个文件</span>
+            <div class="folder-stats responsive-folder-stats">
+                <div class="stat-row">
+                    <span class="stat-item"><i class="fas fa-file"></i> ${fileCount} 个文件</span>
+                    <span class="stat-item stat-size"><i class="fas fa-hdd"></i> ${size}</span>
                 </div>
-                <div class="stat-item">
-                    <i class="fas fa-hdd"></i>
-                    <span>${size}</span>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-calendar"></i>
-                    <span>${createdAt}</span>
+                <div class="stat-row stat-date">
+                    <span class="stat-item"><i class="fas fa-calendar"></i> ${createdAt}</span>
                 </div>
             </div>
         </div>
