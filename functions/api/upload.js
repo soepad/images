@@ -133,7 +133,6 @@ export async function onRequest(context) {
       const formData = await request.formData();
       const file = formData.get('file');
       const skipDeploy = formData.get('skipDeploy') === 'true';
-      // 新增：支持 folderName 字段
       let folderName = formData.get('folderName');
       if (folderName) folderName = folderName.trim();
       
@@ -151,14 +150,23 @@ export async function onRequest(context) {
           }
         });
       }
-      
+      if (!folderName) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '未指定文件夹名称（folderName）'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
       // 读取文件内容
       const fileBuffer = await file.arrayBuffer();
       const base64Data = arrayBufferToBase64(fileBuffer);
-      
       // 检查并分配仓库空间
       const allocation = await checkRepositorySpaceAndAllocate(env, file.size);
-      
       if (!allocation.canUpload) {
         return new Response(JSON.stringify({
           success: false,
@@ -171,59 +179,42 @@ export async function onRequest(context) {
           }
         });
       }
-      
-      // 使用分配的仓库
       const { repository } = allocation;
-      
-      // 获取北京时间的日期路径
-      const datePath = getBeijingDatePath();
-      
-      // 使用原始文件名
-      const fileName = file.name;
-      
-      // 构建完整路径：public/年/月/日/文件名 或 public/{folderName}/{文件名}
-      let filePath;
-      if (folderName) {
-        filePath = `public/${folderName}/${fileName}`;
-      } else {
-        filePath = `public/${datePath}/${fileName}`;
-      }
-      
-      console.log(`后台直接上传文件到GitHub仓库 ${repository.repo}: ${filePath}`);
-      
-      // 检查文件是否已存在
-      try {
-        const fileExists = await env.DB.prepare(`
-          SELECT id FROM images 
-          WHERE github_path = ? AND repository_id = ?
-        `).bind(filePath, repository.id).first();
-        
-        // 如果没有抛出错误，说明文件存在
+      // 获取 folder_id
+      const folderPath = `public/${folderName}`;
+      const folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+      if (!folderRow) {
         return new Response(JSON.stringify({
           success: false,
-          error: `文件 "${fileName}" 已存在，请重命名后重试`,
-          details: 'File already exists'
+          error: `目标文件夹不存在: ${folderName}`
         }), {
-          status: 409, // 明确返回409冲突状态码
+          status: 400,
           headers: {
             'Content-Type': 'application/json',
             ...corsHeaders
           }
         });
-      } catch (existingFileError) {
-        // 如果是404错误，说明文件不存在，可以继续上传
-        if (existingFileError.status !== 404) {
-          // 如果是其他错误，记录下来，但继续尝试上传
-          console.warn('检查文件是否存在时出错:', existingFileError);
-        }
       }
-      
+      const folderId = folderRow.id;
+      const fileName = file.name;
+      const filePath = `${folderPath}/${fileName}`;
+      // 查重
+      const fileExists = await env.DB.prepare(`SELECT id FROM folder_files WHERE folder_id = ? AND filename = ? AND repository_id = ?`).bind(folderId, fileName, repository.id).first();
+      if (fileExists) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `文件 "${fileName}" 已存在，请重命名后重试`,
+          details: 'File already exists'
+        }), {
+          status: 409,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
       // 上传到GitHub
-      const octokit = new Octokit({
-        auth: repository.token
-      });
-      
-      // 上传文件到GitHub
+      const octokit = new Octokit({ auth: repository.token });
       const response = await octokit.rest.repos.createOrUpdateFileContents({
         owner: repository.owner,
         repo: repository.repo,
@@ -232,98 +223,15 @@ export async function onRequest(context) {
         content: base64Data,
         branch: 'main'
       });
-      
       console.log(`文件上传到GitHub成功，SHA: ${response.data.content.sha}`);
-      
-      // 保存到数据库 - 使用北京时间而不是UTC时间
+      // 保存到 folder_files
       try {
-        // 获取当前北京时间的格式字符串
         const now = new Date();
         const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-        
-        // 使用getUTC*方法正确格式化北京时间
-        const beijingYear = beijingTime.getUTCFullYear();
-        const beijingMonth = String(beijingTime.getUTCMonth() + 1).padStart(2, '0');
-        const beijingDay = String(beijingTime.getUTCDate()).padStart(2, '0');
-        const beijingHour = String(beijingTime.getUTCHours()).padStart(2, '0');
-        const beijingMinute = String(beijingTime.getUTCMinutes()).padStart(2, '0');
-        const beijingSecond = String(beijingTime.getUTCSeconds()).padStart(2, '0');
-        const beijingTimeString = `${beijingYear}-${beijingMonth}-${beijingDay} ${beijingHour}:${beijingMinute}:${beijingSecond}`;
-        
-        // 检查文件是否已存在
-        const existingFile = await env.DB.prepare(`
-          SELECT id FROM images 
-          WHERE filename = ? AND repository_id = ?
-        `).bind(fileName, repository.id).first();
-        
-        if (existingFile) {
-          throw new Error(`文件 "${fileName}" 已存在，请重命名后重试`);
-        }
-        
-        // 插入新文件
-        await env.DB.prepare(`
-          INSERT INTO images (
-            filename, 
-            size, 
-            mime_type, 
-            github_path, 
-            sha, 
-            created_at, 
-            updated_at, 
-            repository_id
-          )
-          VALUES (?, ?, ?, ?, ?, datetime(?), datetime(?), ?)
-        `).bind(
-          fileName,
-          file.size,
-          file.type,
-          filePath,
-          response.data.content.sha,
-          beijingTimeString,
-          beijingTimeString,
-          repository.id
-        ).run();
-        
-        // 更新仓库大小和文件计数 - 直接从数据库计算实际值
-        const statsResult = await env.DB.prepare(`
-          SELECT 
-            COUNT(DISTINCT id) as file_count,
-            COALESCE(SUM(size), 0) as total_size
-          FROM images 
-          WHERE repository_id = ?
-        `).bind(repository.id).first();
-        
-        const actualFileCount = statsResult.file_count || 0;
-        const actualSize = statsResult.total_size || 0;
-        
-        // 更新仓库的实际文件数量和大小
-        await env.DB.prepare(`
-          UPDATE repositories 
-          SET size_estimate = ?,
-              updated_at = datetime('now', '+8 hours')
-          WHERE id = ?
-        `).bind(actualSize, repository.id).run();
-        
-        console.log(`仓库 ${repository.repo} 统计信息已更新: ${actualFileCount} 个文件, ${actualSize} 字节`);
+        const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
+        await env.DB.prepare(`INSERT INTO folder_files (folder_id, repository_id, filename, size, github_path, sha, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime(?))`).bind(folderId, repository.id, fileName, file.size, filePath, response.data.content.sha, beijingTimeString).run();
       } catch (dbError) {
-        console.error('数据库保存失败:', dbError);
-        
-        // 如果是文件已存在的错误，返回409状态码
-        if (dbError.message && dbError.message.includes('已存在')) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: dbError.message,
-            details: 'File already exists'
-          }), {
-            status: 409,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
-        }
-        
-        // 其他数据库错误，继续执行，不中断响应
+        console.error('保存到folder_files失败:', dbError);
       }
       
       // 只有在不跳过部署的情况下才触发部署钩子
@@ -341,7 +249,7 @@ export async function onRequest(context) {
       }
       
       // 返回链接信息
-      const imageUrl = `${env.SITE_URL}/${datePath}/${fileName}`;
+      const imageUrl = `${env.SITE_URL}/${folderPath}/${fileName}`;
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -596,9 +504,20 @@ export async function onRequest(context) {
       const requestData = await request.json();
       sessionId = requestData.sessionId;
       const skipDeploy = requestData.skipDeploy;
-      // 新增：支持 folderName 字段
       let folderName = requestData.folderName;
       if (folderName) folderName = folderName.trim();
+      if (!folderName) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: '未指定文件夹名称（folderName）'
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
       
       console.log(`接收到完成上传请求: 会话ID=${sessionId}, 是否跳过部署=${skipDeploy}, folderName=${folderName}`);
       
@@ -708,8 +627,22 @@ export async function onRequest(context) {
       // 使用分配的仓库
       const { repository } = allocation;
       
-      // 获取北京时间的日期路径
-      const datePath = getBeijingDatePath();
+      // 获取 folder_id
+      const folderPath = `public/${folderName}`;
+      const folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+      if (!folderRow) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `目标文件夹不存在: ${folderName}`
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      const folderId = folderRow.id;
       
       // 构建文件路径 - 使用原始文件名（或在必要时添加时间戳）
       let uploadFileName = session.fileName;
@@ -724,37 +657,27 @@ export async function onRequest(context) {
       if (folderName) {
         filePath = `public/${folderName}/${uploadFileName}`;
       } else {
-        filePath = `public/${datePath}/${uploadFileName}`;
+        filePath = `public/${folderPath}/${uploadFileName}`;
       }
       
-      // 检查文件是否已存在
-      try {
-        const existingFile = await env.DB.prepare(`
-          SELECT id FROM images 
-          WHERE filename = ? AND repository_id = ?
-        `).bind(uploadFileName, repository.id).first();
-        
-        if (existingFile) {
-          // 清理会话数据
-          uploadSessions.delete(sessionId);
-          sessionChunks.delete(sessionId);
-          sessionExpiry.delete(sessionId);
-          
-          return new Response(JSON.stringify({
-            success: false,
-            error: `文件 "${uploadFileName}" 已存在，请重命名后重试`,
-            details: 'File already exists'
-          }), {
-            status: 409,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
-        }
-      } catch (dbError) {
-        console.error('检查文件是否存在失败:', dbError);
-        // 继续执行，不因为数据库错误而中断
+      // 查重
+      const fileExists = await env.DB.prepare(`SELECT id FROM folder_files WHERE folder_id = ? AND filename = ? AND repository_id = ?`).bind(folderId, uploadFileName, repository.id).first();
+      if (fileExists) {
+        // 清理会话数据
+        uploadSessions.delete(sessionId);
+        sessionChunks.delete(sessionId);
+        sessionExpiry.delete(sessionId);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `文件 "${uploadFileName}" 已存在，请重命名后重试`,
+          details: 'File already exists'
+        }), {
+          status: 409,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
       }
       
       // 使用GitHub API上传文件
@@ -773,69 +696,14 @@ export async function onRequest(context) {
           branch: 'main'
         });
         
-        // 保存到数据库 - 使用北京时间而不是UTC时间
+        // 保存到 folder_files
         try {
-          // 获取当前北京时间的格式字符串
           const now = new Date();
           const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-          
-          // 使用getUTC*方法正确格式化北京时间
-          const beijingYear = beijingTime.getUTCFullYear();
-          const beijingMonth = String(beijingTime.getUTCMonth() + 1).padStart(2, '0');
-          const beijingDay = String(beijingTime.getUTCDate()).padStart(2, '0');
-          const beijingHour = String(beijingTime.getUTCHours()).padStart(2, '0');
-          const beijingMinute = String(beijingTime.getUTCMinutes()).padStart(2, '0');
-          const beijingSecond = String(beijingTime.getUTCSeconds()).padStart(2, '0');
-          const beijingTimeString = `${beijingYear}-${beijingMonth}-${beijingDay} ${beijingHour}:${beijingMinute}:${beijingSecond}`;
-          
-          // 插入新文件
-          await env.DB.prepare(`
-            INSERT INTO images (
-              filename, 
-              size, 
-              mime_type, 
-              github_path, 
-              sha, 
-              created_at, 
-              updated_at, 
-              repository_id
-            )
-            VALUES (?, ?, ?, ?, ?, datetime(?), datetime(?), ?)
-          `).bind(
-            uploadFileName,
-            session.fileSize,
-            session.mimeType,
-            filePath,
-            response.data.content.sha,
-            beijingTimeString,
-            beijingTimeString,
-            repository.id
-          ).run();
-          
-          // 更新仓库大小和文件计数 - 直接从数据库计算实际值
-          const statsResult = await env.DB.prepare(`
-            SELECT 
-              COUNT(DISTINCT id) as file_count,
-              COALESCE(SUM(size), 0) as total_size
-            FROM images 
-            WHERE repository_id = ?
-          `).bind(repository.id).first();
-          
-          const actualFileCount = statsResult.file_count || 0;
-          const actualSize = statsResult.total_size || 0;
-          
-          // 更新仓库的实际文件数量和大小
-          await env.DB.prepare(`
-            UPDATE repositories 
-            SET size_estimate = ?,
-                updated_at = datetime('now', '+8 hours')
-            WHERE id = ?
-          `).bind(actualSize, repository.id).run();
-          
-          console.log(`仓库 ${repository.repo} 统计信息已更新: ${actualFileCount} 个文件, ${actualSize} 字节`);
+          const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
+          await env.DB.prepare(`INSERT INTO folder_files (folder_id, repository_id, filename, size, github_path, sha, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime(?))`).bind(folderId, repository.id, uploadFileName, session.fileSize, filePath, response.data.content.sha, beijingTimeString).run();
         } catch (dbError) {
-          console.error('数据库保存失败:', dbError);
-          // 继续执行，不因为数据库错误而中断
+          console.error('保存到folder_files失败:', dbError);
         }
         
         // 清理会话数据
@@ -862,7 +730,7 @@ export async function onRequest(context) {
         }
         
         // 构建图片URL
-        const imageUrl = `${env.SITE_URL}/${datePath}/${uploadFileName}`;
+        const imageUrl = `${env.SITE_URL}/${folderPath}/${uploadFileName}`;
         
         return new Response(JSON.stringify({
           success: true,
