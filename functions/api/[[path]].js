@@ -2478,6 +2478,19 @@ export async function onRequest(context) {
         
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
+
+        // 先检查要创建的文件夹路径在GitHub上的真实状态
+        try {
+          const folderInfo = await octokit.rest.repos.getContent({
+            owner: repo.owner,
+            repo: repo.name,
+            path: folderPath,
+            ref: 'main'
+          });
+          console.log('getContent public/量子力学32 结果:', folderInfo);
+        } catch (e) {
+          console.error('getContent public/量子力学32 出错:', e);
+        }
         
         console.log('准备调用octokit.createOrUpdateFileContents');
         let sha = undefined;
