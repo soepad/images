@@ -546,12 +546,11 @@ export async function onRequest(context) {
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
-        // 直接创建文件夹，不使用SHA参数
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
           
-          // 直接创建文件，不检查SHA
-          await octokit.rest.repos.createOrUpdateFileContents({
+          // 使用createFile API创建新文件，不需要SHA参数
+          await octokit.rest.repos.createFile({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
