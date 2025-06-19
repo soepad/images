@@ -2148,12 +2148,21 @@ body.mobile-view .image-checkbox {
     border-top: 1px solid var(--border-color);
 }
 
+/* 桌面端：所有 .stat-item 都是 flex，防止分行 */
 .stat-item {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 14px;
     color: #666;
+}
+
+/* 移动端：仅 .responsive-folder-stats .stat-item 才 block */
+@media (max-width: 768px) {
+    .responsive-folder-stats .stat-item {
+        display: block;
+        margin-bottom: 4px;
+    }
 }
 
 .stat-item i {
