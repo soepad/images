@@ -2479,29 +2479,27 @@ export async function onRequest(context) {
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
+        console.log('准备调用octokit.createOrUpdateFileContents');
         try {
-          console.log(`开始创建文件夹: ${folderPath}`);
-          
-          // 使用createFile API创建新文件，不需要SHA参数
-          await octokit.rest.repos.createOrUpdateFileContents({
-            owner: repo.owner,
-            repo: repo.name,
-            path: `${folderPath}/README.md`,
-            message: `创建文件夹: ${folderName}`,
-            content: btoa(unescape(encodeURIComponent(placeholderContent))),
-            branch: 'main'
-          });
-          
-          console.log(`成功创建文件夹: ${folderPath}`);
+          const result = await Promise.race([
+            octokit.rest.repos.createOrUpdateFileContents({
+              owner: repo.owner,
+              repo: repo.name,
+              path: `${folderPath}/README.md`,
+              message: `创建文件夹: ${folderName}`,
+              content: btoa(unescape(encodeURIComponent(placeholderContent))),
+              branch: 'main'
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('octokit超时')), 10000))
+          ]);
+          console.log('octokit.createOrUpdateFileContents调用完成', result);
         } catch (createError) {
-          console.error('创建文件夹失败:', createError);
-          
-          // 如果是因为文件已存在而失败，我们认为是成功的
+          console.error('octokit.createOrUpdateFileContents调用出错:', createError);
           if (createError.message && createError.message.includes('already exists')) {
             console.log('文件夹已存在，视为成功');
           } else {
-            return jsonResponse({ 
-              error: '创建文件夹失败: ' + createError.message 
+            return jsonResponse({
+              error: '创建文件夹失败: ' + createError.message
             }, 500);
           }
         }
