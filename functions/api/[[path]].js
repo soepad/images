@@ -2533,16 +2533,28 @@ export async function onRequest(context) {
         };
         if (sha) params.sha = sha;
 
+        // 日志：打印即将调用的参数
+        console.log('即将调用 octokit.createOrUpdateFileContents，参数：', JSON.stringify(params));
+
         try {
           const result = await Promise.race([
             octokit.rest.repos.createOrUpdateFileContents(params),
             new Promise((_, reject) => setTimeout(() => reject(new Error('createOrUpdateFileContents超时')), 10000))
           ]);
-          console.log('octokit.createOrUpdateFileContents调用完成', result);
+          console.log('octokit.createOrUpdateFileContents 调用完成，返回结果：', JSON.stringify(result));
         } catch (createError) {
-          console.error('octokit.createOrUpdateFileContents调用出错:', createError, createError.status, createError.response, createError.message, createError.stack);
+          // 日志：详细打印异常的所有属性
+          console.error('octokit.createOrUpdateFileContents 调用出错:', {
+            name: createError.name,
+            message: createError.message,
+            stack: createError.stack,
+            status: createError.status,
+            response: createError.response,
+            toString: createError.toString && createError.toString()
+          });
           return jsonResponse({
             error: '创建文件夹失败: ' + createError.message,
+            name: createError.name,
             stack: createError.stack,
             status: createError.status,
             response: createError.response
