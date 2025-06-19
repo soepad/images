@@ -133,8 +133,11 @@ export async function onRequest(context) {
       const formData = await request.formData();
       const file = formData.get('file');
       const skipDeploy = formData.get('skipDeploy') === 'true';
+      // 新增：支持 folderName 字段
+      let folderName = formData.get('folderName');
+      if (folderName) folderName = folderName.trim();
       
-      console.log(`接收到直接上传请求: 文件=${file.name}, 大小=${file.size}字节, 是否跳过部署=${skipDeploy}`);
+      console.log(`接收到直接上传请求: 文件=${file.name}, 大小=${file.size}字节, 是否跳过部署=${skipDeploy}, folderName=${folderName}`);
       
       if (!file) {
         return new Response(JSON.stringify({
@@ -172,29 +175,28 @@ export async function onRequest(context) {
       // 使用分配的仓库
       const { repository } = allocation;
       
-      // 使用GitHub API上传文件
-      const octokit = new Octokit({
-        auth: repository.token
-      });
-      
       // 获取北京时间的日期路径
       const datePath = getBeijingDatePath();
       
       // 使用原始文件名
       const fileName = file.name;
       
-      // 构建完整路径：public/年/月/日/文件名
-      const filePath = `public/${datePath}/${fileName}`;
+      // 构建完整路径：public/年/月/日/文件名 或 public/{folderName}/{文件名}
+      let filePath;
+      if (folderName) {
+        filePath = `public/${folderName}/${fileName}`;
+      } else {
+        filePath = `public/${datePath}/${fileName}`;
+      }
       
       console.log(`后台直接上传文件到GitHub仓库 ${repository.repo}: ${filePath}`);
       
       // 检查文件是否已存在
       try {
-        const fileExists = await octokit.rest.repos.getContent({
-          owner: repository.owner,
-          repo: repository.repo,
-          path: filePath
-        });
+        const fileExists = await env.DB.prepare(`
+          SELECT id FROM images 
+          WHERE filename = ? AND repository_id = ?
+        `).bind(fileName, repository.id).first();
         
         // 如果没有抛出错误，说明文件存在
         return new Response(JSON.stringify({
@@ -217,6 +219,11 @@ export async function onRequest(context) {
       }
       
       // 上传到GitHub
+      const octokit = new Octokit({
+        auth: repository.token
+      });
+      
+      // 上传文件到GitHub
       const response = await octokit.rest.repos.createOrUpdateFileContents({
         owner: repository.owner,
         repo: repository.repo,
@@ -589,8 +596,11 @@ export async function onRequest(context) {
       const requestData = await request.json();
       sessionId = requestData.sessionId;
       const skipDeploy = requestData.skipDeploy;
+      // 新增：支持 folderName 字段
+      let folderName = requestData.folderName;
+      if (folderName) folderName = folderName.trim();
       
-      console.log(`接收到完成上传请求: 会话ID=${sessionId}, 是否跳过部署=${skipDeploy}`);
+      console.log(`接收到完成上传请求: 会话ID=${sessionId}, 是否跳过部署=${skipDeploy}, folderName=${folderName}`);
       
       // 验证参数
       if (!sessionId) {
@@ -709,7 +719,13 @@ export async function onRequest(context) {
         uploadFileName = `${uploadFileName}.${extension}`;
       }
       
-      const filePath = `public/${datePath}/${uploadFileName}`;
+      // 构建完整路径：public/年/月/日/文件名 或 public/{folderName}/{文件名}
+      let filePath;
+      if (folderName) {
+        filePath = `public/${folderName}/${uploadFileName}`;
+      } else {
+        filePath = `public/${datePath}/${uploadFileName}`;
+      }
       
       // 检查文件是否已存在
       try {
