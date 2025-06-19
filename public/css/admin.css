@@ -2575,4 +2575,50 @@ body.mobile-view .image-checkbox {
 .stat-date-row i {
     margin-right: 6px;
     color: var(--primary-color);
+}
+
+/* 文件夹弹窗宽度与主功能区一致 */
+.modal.wide-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wide-modal-content {
+    min-width: 900px;
+    max-width: 98vw;
+    width: 100%;
+}
+.file-list-table {
+    width: 100%;
+    margin-top: 16px;
+}
+.file-list-header, .file-list-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
+.file-list-header {
+    font-weight: bold;
+    background: #f8f9fa;
+    border-radius: 4px 4px 0 0;
+}
+.file-list-row:last-child {
+    border-bottom: none;
+}
+.file-col {
+    padding: 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-col-checkbox { width: 36px; text-align: center; }
+.file-col-index { width: 36px; text-align: center; }
+.file-col-name { flex: 2; min-width: 120px; }
+.file-col-size { width: 90px; text-align: right; }
+.file-col-repo { width: 140px; text-align: center; }
+.file-col-actions { width: 160px; text-align: center; }
+@media (max-width: 1000px) {
+    .wide-modal-content { min-width: 0; width: 98vw; }
+    .file-col-repo, .file-col-actions { width: 90px; }
 } 
