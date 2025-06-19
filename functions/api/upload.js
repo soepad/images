@@ -195,8 +195,8 @@ export async function onRequest(context) {
       try {
         const fileExists = await env.DB.prepare(`
           SELECT id FROM images 
-          WHERE filename = ? AND repository_id = ?
-        `).bind(fileName, repository.id).first();
+          WHERE github_path = ? AND repository_id = ?
+        `).bind(filePath, repository.id).first();
         
         // 如果没有抛出错误，说明文件存在
         return new Response(JSON.stringify({
