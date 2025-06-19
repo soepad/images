@@ -511,13 +511,13 @@ export async function onRequest(context) {
         // 检查文件夹是否已存在
         let sha = undefined;
         try {
-          const fileInfo = await octokit.rest.repos.getContent({
+          const folderInfo = await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
-            path: `${folderPath}/README.md`,
+            path: folderPath,
+            ref: 'main'
           });
-          sha = fileInfo.data.sha;
-          console.log('README.md已存在，sha:', sha);
+          console.log('getContent public/量子力学32 结果:', folderInfo);
         } catch (e) {
           if (e.status !== 404) {
             console.error('getContent查sha出错:', e);
