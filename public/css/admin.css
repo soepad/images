@@ -2505,10 +2505,14 @@ body.mobile-view .image-checkbox {
 }
 .responsive-folder-stats .stat-row.stat-date {
     display: block;
-    align-items: center;
-    margin-top: 2px;
+    align-items: flex-start;
+    margin-top: 8px;
     margin-bottom: 0;
     gap: 0;
+}
+.responsive-folder-stats .stat-row.stat-date .stat-item {
+    display: block;
+    width: 100%;
 }
 .responsive-folder-stats .stat-item {
     display: flex;
