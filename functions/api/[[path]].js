@@ -2481,23 +2481,7 @@ export async function onRequest(context) {
         const fileName = '.gitkeep';
 
         // 先检查要创建的文件夹路径在GitHub上的真实状态
-        try {
-          const folderInfo = await Promise.race([
-            octokit.rest.repos.getContent({
-              owner: repo.owner,
-              repo: repo.name,
-              path: folderPath,
-              ref: 'main'
-            }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('getContent超时')), 10000))
-          ]);
-          console.log('getContent public/量子力学32 结果:', folderInfo);
-        } catch (e) {
-          console.error('getContent public/量子力学32 出错:', e, e.status, e.response, e.message, e.stack);
-        }
-
-        console.log('准备调用octokit.createOrUpdateFileContents');
-        let sha = undefined;
+        let fileExists = false;
         try {
           const fileInfo = await Promise.race([
             octokit.rest.repos.getContent({
@@ -2507,8 +2491,9 @@ export async function onRequest(context) {
             }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('getContent(.gitkeep)超时')), 10000))
           ]);
-          sha = fileInfo.data.sha;
-          console.log(`${fileName}已存在，sha:`, sha);
+          // 如果能查到，说明已存在
+          fileExists = true;
+          console.log(`${fileName}已存在，sha:`, fileInfo.data.sha);
         } catch (e) {
           if (e.status !== 404) {
             console.error(`getContent查sha出错:`, e, e.status, e.response, e.message, e.stack);
@@ -2523,20 +2508,17 @@ export async function onRequest(context) {
           }
         }
 
-        const params = {
-          owner: repo.owner,
-          repo: repo.name,
-          path: `${folderPath}/${fileName}`,
-          message: `创建文件夹: ${folderName}`,
-          content: btoa(''),
-          branch: 'main'
-        };
-        if (sha) params.sha = sha;
+        if (fileExists) {
+          // .gitkeep 已存在，直接返回
+          return jsonResponse({
+            success: true,
+            message: '文件夹已存在（.gitkeep 已存在）',
+            folderPath: folderPath,
+            alreadyExists: true
+          });
+        }
 
-        // 日志：打印即将调用的参数
-        console.log('即将调用 GitHub API (fetch PUT /contents)，参数：', JSON.stringify(params));
-
-        // 用 fetch 直接调用 GitHub API
+        // 用 fetch 直接调用 GitHub API 创建 .gitkeep
         try {
           const url = `https://api.github.com/repos/${repo.owner}/${repo.name}/contents/${encodeURIComponent(folderPath)}/.gitkeep`;
           const body = {
@@ -2544,7 +2526,6 @@ export async function onRequest(context) {
             content: btoa(''), // base64 空字符串
             branch: 'main'
           };
-          if (sha) body.sha = sha;
           console.log('fetch PUT url:', url);
           console.log('fetch PUT body:', JSON.stringify(body));
           const response = await Promise.race([
