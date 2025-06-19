@@ -2140,12 +2140,29 @@ body.mobile-view .image-checkbox {
     flex-shrink: 0;
 }
 
-.folder-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
+.folder-stats,
+.responsive-folder-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.responsive-folder-stats .stat-row {
+    display: flex;
+    flex-direction: row;
+    gap: 32px;
+}
+.stat-date-row {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
+    white-space: nowrap;
+    clear: both;
+}
+.stat-date-row i {
+    margin-right: 6px;
+    color: var(--primary-color);
 }
 
 /* 桌面端：所有 .stat-item 都是 flex，防止分行 */
