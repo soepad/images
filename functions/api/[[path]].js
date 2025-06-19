@@ -2550,6 +2550,15 @@ export async function onRequest(context) {
           }
           console.log('GitHub API 返回:', result);
           if (!response.ok) {
+            // 如果是 409 冲突，说明已存在，直接返回"已存在"
+            if (response.status === 409 || (result.message && result.message.includes('is at') && result.message.includes('but expected'))) {
+              return jsonResponse({
+                success: true,
+                message: '文件夹已存在（GitHub 409 冲突）',
+                folderPath: folderPath,
+                alreadyExists: true
+              });
+            }
             throw new Error(result.message || result.raw || 'GitHub API error');
           }
         } catch (createError) {
