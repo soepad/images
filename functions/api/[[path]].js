@@ -2482,8 +2482,8 @@ export async function onRequest(context) {
         try {
           console.log(`开始创建文件夹: ${folderPath}`);
           
-          // 直接创建文件，不检查SHA
-          await octokit.rest.repos.createOrUpdateFileContents({
+          // 使用createFile API创建新文件，不需要SHA参数
+          await octokit.rest.repos.createFile({
             owner: repo.owner,
             repo: repo.name,
             path: `${folderPath}/README.md`,
