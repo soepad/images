@@ -2017,47 +2017,39 @@ export async function onRequest(context) {
     if (path.match(/^folders\/(\d+)\/files$/) && request.method === 'GET') {
       try {
         console.log('处理获取文件夹文件列表请求');
-        
         // 检查用户会话
         const session = await checkSession(request, env);
         if (!session) { 
           return jsonResponse({ error: '未授权访问' }, 401); 
         }
-
         // 提取文件夹ID
         const folderId = parseInt(path.match(/^folders\/(\d+)\/files$/)[1], 10);
         if (isNaN(folderId)) { 
           return jsonResponse({ error: '无效的文件夹ID' }, 400); 
         }
-
         // 获取文件夹信息
         const folder = await env.DB.prepare(`
           SELECT * FROM folders WHERE id = ?
         `).bind(folderId).first();
-        
         if (!folder) {
           return jsonResponse({ error: '文件夹不存在' }, 404);
         }
-
-        // 获取该文件夹下的所有文件（从所有仓库中查找）
+        // 获取该文件夹下的所有文件（查 folder_files）
         const files = await env.DB.prepare(`
           SELECT 
-            i.id,
-            i.filename,
-            i.github_path,
-            i.size,
-            i.created_at,
-            i.updated_at,
+            f.id,
+            f.filename,
+            f.github_path,
+            f.size,
+            f.created_at,
             r.name as repository_name,
             r.owner as repository_owner
-          FROM images i
-          JOIN repositories r ON i.repository_id = r.id
-          WHERE i.github_path LIKE ?
-          ORDER BY i.created_at DESC
-        `).bind(`${folder.path}/%`).all();
-        
+          FROM folder_files f
+          JOIN repositories r ON f.repository_id = r.id
+          WHERE f.folder_id = ?
+          ORDER BY f.created_at DESC
+        `).bind(folderId).all();
         console.log(`找到 ${files.results.length} 个文件`);
-        
         return jsonResponse({
           success: true,
           data: {
@@ -2065,7 +2057,6 @@ export async function onRequest(context) {
             files: files.results
           }
         });
-        
       } catch (error) {
         console.error('获取文件夹文件列表失败:', error);
         return jsonResponse({ 
