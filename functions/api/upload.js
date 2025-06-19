@@ -219,6 +219,18 @@ export async function onRequest(context) {
           await env.DB.prepare(`INSERT OR IGNORE INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
         }
         folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+        if (!folderRow) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `自动创建文件夹失败：数据库未能查到 folder_id，请检查 folders 表和 path 唯一约束。`
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
       }
       const folderId = folderRow.id;
       const fileName = file.name;
@@ -690,6 +702,18 @@ export async function onRequest(context) {
           await env.DB.prepare(`INSERT OR IGNORE INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
         }
         folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+        if (!folderRow) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `自动创建文件夹失败：数据库未能查到 folder_id，请检查 folders 表和 path 唯一约束。`
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
       }
       const folderId = folderRow.id;
       
