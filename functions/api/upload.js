@@ -197,7 +197,6 @@ export async function onRequest(context) {
             branch: 'main'
           });
         } catch (e) {
-          // 如果不是已存在则报错
           if (!(e.status === 422 || e.status === 409)) {
             return new Response(JSON.stringify({
               success: false,
@@ -211,11 +210,14 @@ export async function onRequest(context) {
             });
           }
         }
-        // 2. 再写入数据库 folders
-        const now = new Date();
-        const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-        const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
-        await env.DB.prepare(`INSERT INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
+        // 2. 再写入数据库 folders（插入前再查一遍，防止并发/重复插入）
+        let checkRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+        if (!checkRow) {
+          const now = new Date();
+          const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+          const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
+          await env.DB.prepare(`INSERT INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
+        }
         folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
       }
       const folderId = folderRow.id;
@@ -679,10 +681,14 @@ export async function onRequest(context) {
             });
           }
         }
-        const now = new Date();
-        const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-        const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
-        await env.DB.prepare(`INSERT INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
+        // 2. 再写入数据库 folders（插入前再查一遍，防止并发/重复插入）
+        let checkRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
+        if (!checkRow) {
+          const now = new Date();
+          const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+          const beijingTimeString = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')} ${String(beijingTime.getUTCHours()).padStart(2, '0')}:${String(beijingTime.getUTCMinutes()).padStart(2, '0')}:${String(beijingTime.getUTCSeconds()).padStart(2, '0')}`;
+          await env.DB.prepare(`INSERT INTO folders (name, path, repository_id, created_at, updated_at) VALUES (?, ?, ?, datetime(?), datetime(?))`).bind(folderName, folderPath, repository.id, beijingTimeString, beijingTimeString).run();
+        }
         folderRow = await env.DB.prepare(`SELECT id FROM folders WHERE path = ? AND repository_id = ?`).bind(folderPath, repository.id).first();
       }
       const folderId = folderRow.id;
