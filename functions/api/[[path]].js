@@ -2480,28 +2480,47 @@ export async function onRequest(context) {
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
         console.log('准备调用octokit.createOrUpdateFileContents');
+        let sha = undefined;
+        try {
+          const fileInfo = await octokit.rest.repos.getContent({
+            owner: repo.owner,
+            repo: repo.name,
+            path: `${folderPath}/README.md`,
+          });
+          sha = fileInfo.data.sha;
+          console.log('README.md已存在，sha:', sha);
+        } catch (e) {
+          if (e.status !== 404) {
+            console.error('getContent查sha出错:', e);
+            return jsonResponse({
+              error: '查sha失败: ' + e.message
+            }, 500);
+          } else {
+            console.log('README.md不存在，将新建');
+          }
+        }
+
+        const params = {
+          owner: repo.owner,
+          repo: repo.name,
+          path: `${folderPath}/README.md`,
+          message: `创建文件夹: ${folderName}`,
+          content: btoa(unescape(encodeURIComponent(placeholderContent))),
+          branch: 'main'
+        };
+        if (sha) params.sha = sha;
+
         try {
           const result = await Promise.race([
-            octokit.rest.repos.createOrUpdateFileContents({
-              owner: repo.owner,
-              repo: repo.name,
-              path: `${folderPath}/README.md`,
-              message: `创建文件夹: ${folderName}`,
-              content: btoa(unescape(encodeURIComponent(placeholderContent))),
-              branch: 'main'
-            }),
+            octokit.rest.repos.createOrUpdateFileContents(params),
             new Promise((_, reject) => setTimeout(() => reject(new Error('octokit超时')), 10000))
           ]);
           console.log('octokit.createOrUpdateFileContents调用完成', result);
         } catch (createError) {
           console.error('octokit.createOrUpdateFileContents调用出错:', createError);
-          if (createError.message && createError.message.includes('already exists')) {
-            console.log('文件夹已存在，视为成功');
-          } else {
-            return jsonResponse({
-              error: '创建文件夹失败: ' + createError.message
-            }, 500);
-          }
+          return jsonResponse({
+            error: '创建文件夹失败: ' + createError.message
+          }, 500);
         }
         
         // 保存文件夹信息到数据库
