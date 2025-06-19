@@ -3672,8 +3672,8 @@ function createFolderCard(folder) {
                     <span class="stat-item"><i class="fas fa-file"></i> ${fileCount} 个文件</span>
                     <span class="stat-item stat-size"><i class="fas fa-hdd"></i> ${size}</span>
                 </div>
-                <div class="stat-row stat-date">
-                    <span class="stat-item"><i class="fas fa-calendar"></i> ${createdAt}</span>
+                <div class="stat-date-row">
+                    <i class="fas fa-calendar"></i> ${createdAt}
                 </div>
             </div>
         </div>
