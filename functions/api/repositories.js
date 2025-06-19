@@ -509,29 +509,21 @@ export async function onRequest(context) {
         const folderPath = `public/${folderName.trim()}`;
         
         // 检查文件夹是否已存在
+        let sha = undefined;
         try {
-          await octokit.rest.repos.getContent({
+          const fileInfo = await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.name,
-            path: folderPath
+            path: `${folderPath}/README.md`,
           });
-          
-          return new Response(JSON.stringify({
-            success: false,
-            error: '文件夹已存在'
-          }), {
-            status: 409,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders
-            }
-          });
-        } catch (error) {
-          if (error.status !== 404) {
-            console.error('检查文件夹是否存在时出错:', error);
+          sha = fileInfo.data.sha;
+          console.log('README.md已存在，sha:', sha);
+        } catch (e) {
+          if (e.status !== 404) {
+            console.error('getContent查sha出错:', e);
             return new Response(JSON.stringify({
               success: false,
-              error: '检查文件夹状态失败: ' + error.message
+              error: '查sha失败: ' + e.message
             }), {
               status: 500,
               headers: {
@@ -539,43 +531,43 @@ export async function onRequest(context) {
                 ...corsHeaders
               }
             });
+          } else {
+            console.log('README.md不存在，将新建');
           }
-          // 404表示文件夹不存在，继续创建
         }
         
         // 创建文件夹（通过创建一个占位文件）
         const placeholderContent = `# ${folderName}\n\n此文件夹用于存储图片文件。`;
         
         console.log('准备调用octokit.createOrUpdateFileContents');
+        const params = {
+          owner: repo.owner,
+          repo: repo.name,
+          path: `${folderPath}/README.md`,
+          message: `创建文件夹: ${folderName}`,
+          content: btoa(unescape(encodeURIComponent(placeholderContent))),
+          branch: 'main'
+        };
+        if (sha) params.sha = sha;
+        
         try {
           const result = await Promise.race([
-            octokit.rest.repos.createOrUpdateFileContents({
-              owner: repo.owner,
-              repo: repo.name,
-              path: `${folderPath}/README.md`,
-              message: `创建文件夹: ${folderName}`,
-              content: btoa(unescape(encodeURIComponent(placeholderContent))),
-              branch: 'main'
-            }),
+            octokit.rest.repos.createOrUpdateFileContents(params),
             new Promise((_, reject) => setTimeout(() => reject(new Error('octokit超时')), 10000))
           ]);
           console.log('octokit.createOrUpdateFileContents调用完成', result);
         } catch (createError) {
           console.error('octokit.createOrUpdateFileContents调用出错:', createError);
-          if (createError.message && createError.message.includes('already exists')) {
-            console.log('文件夹已存在，视为成功');
-          } else {
-            return new Response(JSON.stringify({
-              success: false,
-              error: '创建文件夹失败: ' + createError.message
-            }), {
-              status: 500,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              }
-            });
-          }
+          return new Response(JSON.stringify({
+            success: false,
+            error: '创建文件夹失败: ' + createError.message
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
         }
         
         // 保存文件夹信息到数据库
