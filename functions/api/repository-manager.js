@@ -458,7 +458,7 @@ export async function updateRepositorySizeEstimate(env, repositoryId, fileSize) 
     // 直接从数据库查询实际的文件数量和总大小
     const statsResult = await env.DB.prepare(`
       SELECT 
-        COUNT(DISTINCT id) as file_count,
+        COUNT(*) as file_count,
         COALESCE(SUM(size), 0) as total_size
       FROM folder_files 
       WHERE repository_id = ?
@@ -475,10 +475,9 @@ export async function updateRepositorySizeEstimate(env, repositoryId, fileSize) 
     // 更新仓库的实际文件数量和大小
     await env.DB.prepare(`
       UPDATE repositories 
-      SET size_estimate = ?, 
-          updated_at = datetime('now', '+8 hours')
+      SET size_estimate = ?, file_count = ?, updated_at = datetime('now', '+8 hours')
       WHERE id = ?
-    `).bind(actualSize, repositoryId).run();
+    `).bind(statsResult.total_size, statsResult.file_count, repositoryId).run();
     
     // 获取更新后的仓库信息
     const repo = await env.DB.prepare(`
@@ -528,7 +527,7 @@ export async function decreaseRepositorySizeEstimate(env, repositoryId, fileSize
     // 直接从数据库查询实际的文件数量和总大小
     const statsResult = await env.DB.prepare(`
       SELECT 
-        COUNT(DISTINCT id) as file_count,
+        COUNT(*) as file_count,
         COALESCE(SUM(size), 0) as total_size
       FROM folder_files 
       WHERE repository_id = ?
@@ -545,9 +544,9 @@ export async function decreaseRepositorySizeEstimate(env, repositoryId, fileSize
     // 更新仓库的实际文件数量和大小
     await env.DB.prepare(`
       UPDATE repositories 
-      SET size_estimate = ?, updated_at = datetime('now', '+8 hours')
+      SET size_estimate = ?, file_count = ?, updated_at = datetime('now', '+8 hours')
       WHERE id = ?
-    `).bind(actualSize, repositoryId).run();
+    `).bind(actualSize, actualFileCount, repositoryId).run();
     
     console.log(`仓库 ${repo.name} (ID: ${repositoryId}) 统计信息已更新: ${actualFileCount} 个文件, ${actualSize} 字节`);
     
@@ -609,7 +608,7 @@ export async function syncRepositoryFileCount(env, repositoryId) {
     // 直接从数据库查询实际文件数量和总大小
     const statsResult = await env.DB.prepare(`
       SELECT 
-        COUNT(DISTINCT id) as file_count,
+        COUNT(*) as file_count,
         COALESCE(SUM(size), 0) as total_size
       FROM folder_files 
       WHERE repository_id = ?
@@ -628,10 +627,9 @@ export async function syncRepositoryFileCount(env, repositoryId) {
     // 更新仓库的文件计数和大小
     await env.DB.prepare(`
       UPDATE repositories 
-      SET size_estimate = ?,
-          updated_at = datetime('now', '+8 hours')
+      SET size_estimate = ?, file_count = ?, updated_at = datetime('now', '+8 hours')
       WHERE id = ?
-    `).bind(actualSize, repositoryId).run();
+    `).bind(actualSize, actualFileCount, repositoryId).run();
     
     console.log(`仓库 ${repo.name} (ID: ${repositoryId}) 的统计信息已同步: ${actualFileCount} 个文件, ${actualSize} 字节`);
     
