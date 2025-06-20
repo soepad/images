@@ -460,7 +460,7 @@ export async function updateRepositorySizeEstimate(env, repositoryId, fileSize) 
       SELECT 
         COUNT(DISTINCT id) as file_count,
         COALESCE(SUM(size), 0) as total_size
-      FROM images 
+      FROM folder_files 
       WHERE repository_id = ?
     `).bind(repositoryId).first();
     
@@ -530,7 +530,7 @@ export async function decreaseRepositorySizeEstimate(env, repositoryId, fileSize
       SELECT 
         COUNT(DISTINCT id) as file_count,
         COALESCE(SUM(size), 0) as total_size
-      FROM images 
+      FROM folder_files 
       WHERE repository_id = ?
     `).bind(repositoryId).first();
     
@@ -611,7 +611,7 @@ export async function syncRepositoryFileCount(env, repositoryId) {
       SELECT 
         COUNT(DISTINCT id) as file_count,
         COALESCE(SUM(size), 0) as total_size
-      FROM images 
+      FROM folder_files 
       WHERE repository_id = ?
     `).bind(repositoryId).first();
     
