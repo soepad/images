@@ -3728,9 +3728,9 @@ function displayFolderContents(folder, files) {
             <div class="file-list-row" data-file-id="${file.id}">
                 <span class="file-col file-col-checkbox"><input type="checkbox" class="file-select" data-file-id="${file.id}"></span>
                 <span class="file-col file-col-index">${idx + 1}</span>
-                <span class="file-col file-col-name">${file.filename}</span>
+                <span class="file-col file-col-name" title="${file.filename}">${file.filename}</span>
                 <span class="file-col file-col-size">${formatFileSize(file.size)}</span>
-                <span class="file-col file-col-repo">${file.repository_name}</span>
+                <span class="file-col file-col-repo" title="${file.repository_name}">${file.repository_name}</span>
                 <span class="file-col file-col-actions">
                     <button class="btn btn-sm btn-outline-primary" onclick="copyFileUrl('${file.github_path}')">
                         <i class="fas fa-copy"></i> 复制链接
@@ -3760,7 +3760,7 @@ function displayFolderContents(folder, files) {
             </div>
             <div class="modal-body">
                 <div class="folder-info-bar">
-                    <span class="folder-path">${folder.path}</span>
+                    <span class="folder-path" title="${folder.path}">${folder.path}</span>
                     <span class="file-count">${files.length} 个文件</span>
                 </div>
                 <div class="files-container file-list-table">
