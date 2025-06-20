@@ -189,8 +189,8 @@ export async function onRequest(context) {
         const octokit = new Octokit({ auth: repository.token });
         try {
           await octokit.rest.repos.createOrUpdateFileContents({
-            owner: repository.owner,
-            repo: repository.repo,
+          owner: repository.owner,
+          repo: repository.repo,
             path: `${folderPath}/.gitkeep`,
             message: `自动创建文件夹: ${folderName}`,
             content: btoa(''),
@@ -249,7 +249,7 @@ export async function onRequest(context) {
             ...corsHeaders
           }
         });
-      }
+        }
       // 上传到GitHub
       const octokit = new Octokit({ auth: repository.token });
       const response = await octokit.rest.repos.createOrUpdateFileContents({
@@ -271,6 +271,7 @@ export async function onRequest(context) {
         console.error('保存到folder_files失败:', dbError);
       }
       
+      /*
       // 只有在不跳过部署的情况下才触发部署钩子
       if (!skipDeploy) {
         // GitHub API已经确认文件上传成功，可以立即触发部署
@@ -284,7 +285,8 @@ export async function onRequest(context) {
       } else {
         console.log('根据请求参数跳过触发部署，这不是最后一个文件');
       }
-      
+      */
+
       // 返回链接信息
       const imageUrl = `${env.SITE_URL}/${folderPath}/${fileName}`;
       return new Response(JSON.stringify({
@@ -736,21 +738,21 @@ export async function onRequest(context) {
       // 查重
       const fileExists = await env.DB.prepare(`SELECT id FROM folder_files WHERE folder_id = ? AND filename = ? AND repository_id = ?`).bind(folderId, uploadFileName, repository.id).first();
       if (fileExists) {
-        // 清理会话数据
-        uploadSessions.delete(sessionId);
-        sessionChunks.delete(sessionId);
-        sessionExpiry.delete(sessionId);
-        return new Response(JSON.stringify({
-          success: false,
-          error: `文件 "${uploadFileName}" 已存在，请重命名后重试`,
-          details: 'File already exists'
-        }), {
-          status: 409,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        });
+          // 清理会话数据
+          uploadSessions.delete(sessionId);
+          sessionChunks.delete(sessionId);
+          sessionExpiry.delete(sessionId);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `文件 "${uploadFileName}" 已存在，请重命名后重试`,
+            details: 'File already exists'
+          }), {
+            status: 409,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
       }
       
       // 使用GitHub API上传文件
@@ -787,6 +789,7 @@ export async function onRequest(context) {
         // 更新仓库大小估算
         await updateRepositorySizeEstimate(env, repository.id, session.fileSize);
         
+        /*
         // 触发部署钩子
         if (!skipDeploy && repository.deployHook) {
           try {
@@ -801,7 +804,8 @@ export async function onRequest(context) {
             // 继续执行，不因为部署失败而中断
           }
         }
-        
+        */
+
         // 构建图片URL
         const imageUrl = `${env.SITE_URL}/${folderPath}/${uploadFileName}`;
         
