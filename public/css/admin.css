@@ -2603,8 +2603,8 @@ body.mobile-view .image-checkbox {
 .file-list-header, .file-list-row {
     display: flex;
     align-items: center;
+    padding: 10px;
     border-bottom: 1px solid #eee;
-    padding: 8px 0;
 }
 .file-list-header {
     font-weight: bold;
