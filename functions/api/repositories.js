@@ -66,12 +66,12 @@ async function syncRepositorySize(env, repoId) {
       return { success: false, error: '仓库不存在' };
     }
     
-    // 直接从images表获取实际文件数量和总大小
+    // 直接从folder_files表获取实际文件数量和总大小
     const statsResult = await env.DB.prepare(`
       SELECT 
-        COUNT(DISTINCT id) as file_count,
+        COUNT(*) as file_count,
         COALESCE(SUM(size), 0) as total_size
-      FROM images 
+      FROM folder_files 
       WHERE repository_id = ?
     `).bind(repoId).first();
     
@@ -186,7 +186,7 @@ export async function onRequest(context) {
           SELECT 
             COUNT(*) as file_count,
             COALESCE(SUM(size), 0) as total_size
-          FROM images 
+          FROM folder_files 
           WHERE repository_id = ?
         `).bind(repo.id).first();
         
