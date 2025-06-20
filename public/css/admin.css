@@ -2519,24 +2519,12 @@ body.mobile-view .image-checkbox {
 .file-list-row:last-child {
     border-bottom: none;
 }
-.file-col {
-    padding: 0 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.file-col-checkbox { width: 36px; text-align: center; }
-.file-col-index { width: 36px; text-align: center; }
-.file-col-name { flex: 3; min-width: 150px; }
-.file-col-size { flex: 0 0 100px; text-align: right; }
-.file-col-repo { flex: 0 0 180px; text-align: center; }
-.file-col-actions {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
-}
+.file-col-checkbox { flex: 0 0 36px; max-width: 36px; min-width: 36px; text-align: center; }
+.file-col-index { flex: 0 0 36px; max-width: 36px; min-width: 36px; text-align: center; }
+.file-col-name { flex: 3 1 0; min-width: 120px; }
+.file-col-size { flex: 0 0 100px; max-width: 100px; min-width: 100px; text-align: right; }
+.file-col-repo { flex: 0 0 180px; max-width: 180px; min-width: 180px; text-align: center; }
+.file-col-actions { flex: 0 0 160px; max-width: 160px; min-width: 160px; text-align: center; display: flex; gap: 8px; align-items: center; justify-content: center; }
 .file-col-actions .btn {
     white-space: nowrap;
     min-width: 0;
