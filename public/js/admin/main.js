@@ -3866,7 +3866,6 @@ function uploadToFolder(folderName) {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('folderName', folderName);
-                // 可选：可以加仓库ID等参数
                 // 发起上传请求
                 const response = await fetch('/api/upload?action=upload', {
                     method: 'POST',
@@ -3887,9 +3886,8 @@ function uploadToFolder(folderName) {
             }
         } catch (error) {
             showNotification(`上传失败: ${error.message}`, 'error');
-        } finally {
-            document.body.removeChild(fileInput);
         }
+        document.body.removeChild(fileInput);
     });
     // 触发文件选择
     fileInput.click();
@@ -3900,9 +3898,9 @@ function showFolderMenu(event, folderId) {
     
     const menuItems = [
         {
-            label: '查看文件',
-            icon: 'fas fa-list',
-            action: () => openFolder(folderId)
+            label: '部署',
+            icon: 'fas fa-rocket',
+            action: () => deployFolder(folderId)
         },
         {
             label: '重命名',
@@ -3922,6 +3920,26 @@ function showFolderMenu(event, folderId) {
             item.action();
         }
     });
+}
+
+// 新增：手动触发部署
+async function deployFolder(folderId) {
+    showNotification('正在触发部署...', 'info');
+    try {
+        const response = await fetch('/api/deploy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderId })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showNotification('部署已触发！', 'success');
+        } else {
+            showNotification('部署失败: ' + (result.error || '未知错误'), 'error');
+        }
+    } catch (e) {
+        showNotification('部署请求异常: ' + e.message, 'error');
+    }
 }
 
 function renameFolder(folderId) {
