@@ -3744,17 +3744,19 @@ function displayFolderContents(folder, files) {
         `<div class="empty-folder">
             <i class="fas fa-folder-open"></i>
             <h3>当前文件夹暂无文件</h3>
-            <p>请上传文件到此文件夹</p>
-            <button class="btn btn-primary" onclick="uploadToFolder('${folder.name}')">
-                <i class="fas fa-upload"></i> 上传文件
-            </button>
+            <p>请点击右上角的 "上传文件" 按钮开始上传.</p>
         </div>`;
     
     modal.innerHTML = `
         <div class="modal-content wide-modal-content">
             <div class="modal-header">
                 <h3>文件夹: ${folder.name}</h3>
-                <button class="close-btn" onclick="closeFolderModal()">&times;</button>
+                <div>
+                    <button class="btn btn-primary btn-sm" style="margin-right: 10px;" onclick="uploadToFolder('${folder.name}')">
+                        <i class="fas fa-upload"></i> 上传文件
+                    </button>
+                    <button class="close-btn" onclick="closeFolderModal()">&times;</button>
+                </div>
             </div>
             <div class="modal-body">
                 <div class="folder-info-bar">
