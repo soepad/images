@@ -1981,19 +1981,19 @@ export async function onRequest(context) {
         if (!session) { 
           return jsonResponse({ error: '未授权访问' }, 401); 
         }
-        // 获取所有文件夹及其统计信息（查 folder_files）
+        // 合并同名（同 path）文件夹，统计所有仓库下的文件数和大小
         const folders = await env.DB.prepare(`
           SELECT 
-            f.id,
+            MIN(f.id) as id,
             f.name,
             f.path,
-            f.created_at,
+            MIN(f.created_at) as created_at,
             COALESCE(SUM(ff.size), 0) as total_size,
             COUNT(ff.id) as file_count
           FROM folders f
           LEFT JOIN folder_files ff ON ff.folder_id = f.id
-          GROUP BY f.id, f.name, f.path, f.created_at
-          ORDER BY f.created_at DESC
+          GROUP BY f.path, f.name
+          ORDER BY MIN(f.created_at) DESC
         `).all();
         console.log(`找到 ${folders.results.length} 个文件夹`);
         return jsonResponse({
