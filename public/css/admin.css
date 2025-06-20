@@ -2625,7 +2625,19 @@ body.mobile-view .image-checkbox {
 .file-col-name { flex: 3; min-width: 150px; }
 .file-col-size { flex: 0 0 100px; text-align: right; }
 .file-col-repo { flex: 0 0 180px; text-align: center; }
-.file-col-actions { flex: 0 0 220px; text-align: center; }
+.file-col-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+.file-col-actions .btn {
+    white-space: nowrap;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 13px;
+}
 @media (max-width: 800px) {
     .wide-modal-content { max-width: 98vw; }
     .file-list-table { padding-left: 0; }
