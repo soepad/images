@@ -3803,7 +3803,11 @@ function closeFolderModal() {
 
 // 复制文件链接
 function copyFileUrl(filePath) {
-    const url = `${window.location.origin}/${filePath}`;
+    // 去掉 public/ 前缀
+    let cleanPath = filePath.startsWith('public/') ? filePath.slice(7) : filePath;
+    // encodeURIComponent 只对路径部分编码（不编码斜杠）
+    cleanPath = cleanPath.split('/').map(encodeURIComponent).join('/');
+    const url = `${window.location.origin}/${cleanPath}`;
     navigator.clipboard.writeText(url).then(() => {
         showNotification('文件链接已复制到剪贴板', 'success');
     }).catch(() => {
