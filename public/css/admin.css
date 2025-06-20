@@ -2585,7 +2585,7 @@ body.mobile-view .image-checkbox {
 }
 .wide-modal-content {
     min-width: 0;
-    max-width: calc(100vw - 300px);
+    max-width: 90vw;
     width: 100%;
     margin: 0 auto;
 }
@@ -2622,12 +2622,12 @@ body.mobile-view .image-checkbox {
 }
 .file-col-checkbox { width: 36px; text-align: center; }
 .file-col-index { width: 36px; text-align: center; }
-.file-col-name { flex: 1.2; min-width: 80px; max-width: 220px; }
-.file-col-size { width: 80px; text-align: right; }
-.file-col-repo { width: 120px; text-align: center; }
-.file-col-actions { width: 120px; text-align: center; }
+.file-col-name { flex: 3; min-width: 150px; }
+.file-col-size { flex: 0 0 100px; text-align: right; }
+.file-col-repo { flex: 0 0 180px; text-align: center; }
+.file-col-actions { flex: 0 0 220px; text-align: center; }
 @media (max-width: 800px) {
     .wide-modal-content { max-width: 98vw; }
     .file-list-table { padding-left: 0; }
-    .file-col-repo, .file-col-actions { width: 80px; }
+    .file-col-repo, .file-col-actions { flex-basis: 120px; }
 } 
