@@ -3709,7 +3709,19 @@ function displayFolderContents(folder, files) {
     const modal = document.createElement('div');
     modal.className = 'modal wide-modal';
     modal.id = 'folderContentsModal';
-    
+
+    // 进度条HTML
+    const progressBarHtml = `
+        <div class="upload-progress" style="display:none;margin-bottom:12px;">
+            <div class="progress-bar" style="height: 10px; background: #eee; border-radius: 5px; overflow: hidden;">
+                <div class="progress-fill" style="height: 100%; background: var(--primary-color); width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 2px;">
+                <span class="progress-text">0%</span>
+                <span class="progress-speed">0 KB/s</span>
+            </div>
+        </div>`;
+
     // 文件列表表头
     const fileTableHeader = `
         <div class="file-list-header">
@@ -3740,7 +3752,7 @@ function displayFolderContents(folder, files) {
                     </button>
                 </span>
             </div>
-        `).join('') : 
+        `).join('') :
         `<div class="empty-folder">
             <i class="fas fa-folder-open"></i>
             <h3>当前文件夹暂无文件</h3>
@@ -3763,6 +3775,7 @@ function displayFolderContents(folder, files) {
                     <span class="folder-path" title="${folder.path}">${folder.path}</span>
                     <span class="file-count">${files.length} 个文件</span>
                 </div>
+                ${progressBarHtml}
                 <div class="files-container file-list-table">
                     ${filesList}
                 </div>
@@ -3864,33 +3877,64 @@ function uploadToFolder(folderName) {
             return;
         }
         showNotification(`正在上传到文件夹: ${folderName} ...`, 'info');
+        // 获取弹窗里的进度条元素
+        const modal = document.getElementById('folderContentsModal');
+        const progressBar = modal.querySelector('.upload-progress');
+        const progressFill = modal.querySelector('.progress-fill');
+        const progressText = modal.querySelector('.progress-text');
+        const progressSpeed = modal.querySelector('.progress-speed');
+        progressBar.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '0%';
+        progressSpeed.textContent = '0 KB/s';
+        let totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        let uploadedBytes = 0;
+        let startTime = Date.now();
         try {
             for (const file of files) {
                 // 构造 FormData
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('folderName', folderName);
-                // 发起上传请求
-                const response = await fetch('/api/upload?action=upload', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'include'
+                // 发起上传请求，带进度
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/upload?action=upload', true);
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.min(100, Math.round((uploadedBytes + e.loaded) / totalSize * 100));
+                            progressFill.style.width = percent + '%';
+                            progressText.textContent = percent + '%';
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            const speed = ((uploadedBytes + e.loaded) / elapsed) || 0;
+                            progressSpeed.textContent = formatFileSize(speed) + '/s';
+                        }
+                    });
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            uploadedBytes += file.size;
+                            resolve();
+                        } else {
+                            reject(new Error('上传失败: ' + xhr.status));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('网络错误'));
+                    xhr.send(formData);
                 });
-                const result = await response.json();
-                if (result.success) {
-                    showNotification(`文件 ${file.name} 上传成功`, 'success');
-                } else {
-                    showNotification(`文件 ${file.name} 上传失败: ${result.error || '未知错误'}`, 'error');
-                }
             }
-            // 上传完成后刷新当前文件夹内容
-            const modal = document.getElementById('folderContentsModal');
+            // 上传完成
+            progressFill.style.width = '100%';
+            progressText.textContent = '100%';
+            progressSpeed.textContent = '';
+            showNotification('文件上传完成', 'success');
+            // 刷新当前文件夹内容
             if (modal && modal.dataset.folderId && modal.dataset.folderName) {
                 openFolder(modal.dataset.folderId, modal.dataset.folderName);
             }
         } catch (error) {
             showNotification(`上传失败: ${error.message}`, 'error');
         }
+        progressBar.style.display = 'none';
         document.body.removeChild(fileInput);
     });
     // 触发文件选择
