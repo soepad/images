@@ -2022,14 +2022,18 @@ export async function onRequest(context) {
         if (isNaN(folderId)) { 
           return jsonResponse({ error: '无效的文件夹ID' }, 400); 
         }
-        // 获取文件夹信息
-        const folder = await env.DB.prepare(`
-          SELECT * FROM folders WHERE id = ?
-        `).bind(folderId).first();
+        // 获取当前文件夹信息
+        const folder = await env.DB.prepare(`SELECT * FROM folders WHERE id = ?`).bind(folderId).first();
         if (!folder) {
           return jsonResponse({ error: '文件夹不存在' }, 404);
         }
-        // 获取该文件夹下的所有文件（查 folder_files）
+        // 查所有同 path 的 folder_id
+        const folderRows = await env.DB.prepare(`SELECT id FROM folders WHERE path = ?`).bind(folder.path).all();
+        const folderIds = folderRows.results.map(f => f.id);
+        if (folderIds.length === 0) {
+          return jsonResponse({ error: '未找到同名文件夹' }, 404);
+        }
+        // 查所有这些 folder_id 下的文件
         const files = await env.DB.prepare(`
           SELECT 
             f.id,
@@ -2041,9 +2045,9 @@ export async function onRequest(context) {
             r.owner as repository_owner
           FROM folder_files f
           JOIN repositories r ON f.repository_id = r.id
-          WHERE f.folder_id = ?
+          WHERE f.folder_id IN (${folderIds.map(() => '?').join(',')})
           ORDER BY f.created_at DESC
-        `).bind(folderId).all();
+        `).bind(...folderIds).all();
         console.log(`找到 ${files.results.length} 个文件`);
         return jsonResponse({
           success: true,
