@@ -3713,7 +3713,7 @@ function displayFolderContents(folder, files) {
     // 文件列表表头
     const fileTableHeader = `
         <div class="file-list-header">
-            <span class="file-col file-col-checkbox">序号 <input type="checkbox" class="file-select-all" onclick="toggleSelectAllFiles(this)"></span>
+            <span class="file-col file-col-checkbox">序号</span>
             <span class="file-col file-col-name">文件名</span>
             <span class="file-col file-col-size">大小</span>
             <span class="file-col file-col-repo">仓库</span>
@@ -3726,7 +3726,6 @@ function displayFolderContents(folder, files) {
         files.map((file, idx) => `
             <div class="file-list-row" data-file-id="${file.id}">
                 <span class="file-col file-col-checkbox">
-                  <input type="checkbox" class="file-select" data-file-id="${file.id}">
                   <span class="file-index">${idx + 1}</span>
                 </span>
                 <span class="file-col file-col-name" title="${file.filename}">${file.filename}</span>
