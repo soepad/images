@@ -252,21 +252,41 @@ class ChunkedUploader {
       chunk.status = 'error';
       chunk.error = error.message;
       
-      if (chunk.retries < 3) {
+      // 检查是否是会话过期或权限错误
+      if (error.message.includes('会话不存在') || 
+          error.message.includes('已过期') ||
+          error.message.includes('游客上传已禁用') ||
+          error.message.includes('没有权限')) {
+        // 这些错误不需要重试，直接失败
+        this._handleError(error);
+        return;
+      }
+      
+      if (chunk.retries < 5) { // 增加重试次数到5次
         // 重试
         chunk.retries++;
-        console.log(`分块 ${chunk.index} 上传失败，正在重试 (${chunk.retries}/3)...`);
+        console.log(`分块 ${chunk.index} 上传失败，正在重试 (${chunk.retries}/5)...`);
         
         // 重置分块状态
         chunk.status = 'pending';
         chunk.error = null;
         
-        // 延迟重试
-        await new Promise(resolve => setTimeout(resolve, 1000 * chunk.retries));
+        // 指数退避延迟重试 (1s, 2s, 4s, 8s, 16s)
+        const delay = Math.min(1000 * Math.pow(2, chunk.retries - 1), 16000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // 重新尝试上传当前分块
         await this._uploadNextChunk();
       } else {
-        // 超过重试次数，取消整个上传
-        this._handleError(new Error(`分块 ${chunk.index} 上传失败，超过最大重试次数`));
+        // 超过重试次数，但尝试继续上传其他分块
+        console.warn(`分块 ${chunk.index} 上传失败，超过最大重试次数，跳过此分块`);
+        
+        // 标记分块为失败但继续处理
+        chunk.status = 'failed';
+        
+        // 尝试继续上传下一个分块
+        this.currentChunkIndex++;
+        await this._uploadNextChunk();
       }
     }
   }
@@ -313,6 +333,20 @@ class ChunkedUploader {
    */
   async _completeUpload() {
     try {
+      // 检查是否有分块上传失败
+      const failedChunks = this.chunks.filter(chunk => chunk.status === 'failed');
+      const uploadedChunks = this.chunks.filter(chunk => chunk.status === 'uploaded');
+      
+      if (failedChunks.length > 0) {
+        console.warn(`有 ${failedChunks.length} 个分块上传失败，尝试完成上传`);
+        
+        // 如果有太多分块失败，直接失败
+        const failureRate = failedChunks.length / this.totalChunks;
+        if (failureRate > 0.3) { // 超过30%的分块失败
+          throw new Error(`上传失败：${failedChunks.length}/${this.totalChunks} 个分块上传失败，失败率过高`);
+        }
+      }
+      
       const response = await fetch(`${this.apiPath}?action=complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -347,6 +381,12 @@ class ChunkedUploader {
         }
       }
       
+      // 如果有分块失败但整体上传成功，记录警告
+      if (failedChunks.length > 0) {
+        console.warn(`文件 ${this.fileName} 上传完成，但有 ${failedChunks.length} 个分块失败`);
+        result.warning = `文件上传完成，但有 ${failedChunks.length} 个分块失败`;
+      }
+      
       this._setStatus('completed');
       this.onComplete(result);
       
@@ -376,7 +416,7 @@ class ChunkedUploader {
         // 处理会话过期的情况
         this.error.details = '上传会话已过期，请重新上传';
         this.error.status = 404;
-      } else if (error.message.includes('游客上传已禁用') || error.message.includes('没有权限上传')) {
+      } else if (error.message.includes('游客上传已禁用') || error.message.includes('没有权限')) {
         // 处理权限错误
         this.error.details = '请登录后再试';
         this.error.status = 403;
