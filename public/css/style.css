@@ -311,71 +311,38 @@ h1 {
     background-color: #1976d2;
 }
 
+/* Toast 提示样式 */
 .toast {
     position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #ff3e3e;
-    color: white;
-    padding: 12px 25px;
-    padding-right: 30px;
-    border-radius: 5px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    display: none;
-    max-width: 80%;
-    word-wrap: break-word;
-    text-align: center;
+    top: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    color: #333;
+    font-size: 14px;
+    z-index: 9999;
     opacity: 0;
-    transition: opacity 0.3s ease;
-    border-left: 5px solid #d32f2f;
-    position: relative;
-}
-
-.toast.success {
-    background-color: #4CAF50;
-    border-left: 5px solid #388E3C;
-}
-
-.toast.error {
-    background-color: #ff3e3e;
-    border-left: 5px solid #d32f2f;
-}
-
-.toast.info {
-    background-color: #2196F3;
-    border-left: 5px solid #1976D2;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
 }
 
 .toast.show {
-    display: block;
     opacity: 1;
+    transform: translateY(0);
 }
 
-.toast-title {
-    font-weight: 600;
-    margin-bottom: 5px;
-    font-size: 15px;
+.toast.error {
+    border-left: 4px solid #ff4d4f;
 }
 
-.toast-details {
-    font-size: 13px;
-    opacity: 0.9;
-    margin-top: 5px;
-    padding-top: 5px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+.toast.success {
+    border-left: 4px solid #52c41a;
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+.toast.warning {
+    border-left: 4px solid #faad14;
 }
 
 /* 确保移动端显示也良好 */
@@ -626,4 +593,85 @@ footer {
     transition: opacity 0.3s ease;
     border-left: 5px solid #d32f2f;
     position: relative; /* 确保关闭按钮正确定位 */
+}
+
+/* 部分成功结果样式 */
+.upload-summary {
+    padding: 20px;
+}
+
+.upload-summary h3 {
+    color: var(--secondary-color);
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+.upload-summary h4 {
+    color: var(--secondary-color);
+    margin: 15px 0 10px 0;
+    font-size: 1.1rem;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.success-files {
+    margin-bottom: 20px;
+}
+
+.failed-files {
+    margin-top: 20px;
+}
+
+.file-result {
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.file-error {
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-error .file-name {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.file-error .error-message {
+    color: var(--error-color);
+    font-size: 0.9rem;
+    max-width: 60%;
+    text-align: right;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .file-error {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .file-error .error-message {
+        max-width: 100%;
+        text-align: left;
+    }
+    
+    .upload-summary h3 {
+        font-size: 1.3rem;
+    }
+    
+    .upload-summary h4 {
+        font-size: 1rem;
+    }
 } 
