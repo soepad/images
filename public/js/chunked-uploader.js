@@ -481,17 +481,14 @@ class ChunkedUploader {
    * 取消上传
    */
   cancel() {
+    if (this.status === 'uploading') {
     this._setStatus('cancelled');
-    
-    if (this.sessionId) {
-      fetch('/api/upload?action=cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: this.sessionId })
-      }).catch(console.error);
+      console.log('上传已取消:', this.sessionId);
     }
   }
 }
 
-// 导出上传组件
+// 暴露ChunkedUploader到全局作用域
+if (typeof window !== 'undefined') {
 window.ChunkedUploader = ChunkedUploader; 
+}
