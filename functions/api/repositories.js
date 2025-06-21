@@ -190,8 +190,14 @@ export async function onRequest(context) {
           WHERE repository_id = ?
         `).bind(repo.id).first();
         
-        repo.file_count = stats.file_count;
-        repo.total_size = stats.total_size;
+        // 确保stats不为null
+        if (stats) {
+            repo.file_count = stats.file_count;
+            repo.total_size = stats.total_size;
+        } else {
+            repo.file_count = 0;
+            repo.total_size = 0;
+        }
         
         // 获取仓库大小阈值
         const thresholdSetting = await env.DB.prepare(`
