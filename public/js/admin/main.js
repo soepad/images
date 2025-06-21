@@ -2647,20 +2647,20 @@ async function uploadSelectedFiles(files) {
     
     if (!uploadArea || !progressBar || !progressFill || !progressText || !progressSpeed) {
         console.error('未找到上传相关元素');
-        return;
-    }
+            return;
+        }
 
     // 显示进度条
     uploadArea.style.display = 'none';
     progressBar.style.display = 'block';
     
     let totalSize = 0;
-    let uploadedBytes = 0;
+        let uploadedBytes = 0;
     let startTime = Date.now();
     let uploadedCount = 0;
     let failedCount = 0;
-    const totalFiles = files.length;
-    const uploadedResults = [];
+        const totalFiles = files.length;
+        const uploadedResults = [];
     const failedFiles = [];
     
     // 计算总大小
@@ -2716,36 +2716,68 @@ async function uploadSelectedFiles(files) {
             console.log(`开始上传文件: ${file.name}, 大小: ${file.size}, 是否跳过部署: ${skipDeploy}`);
             
             // 定义文件大小阈值，超过此值使用分块上传
-            const CHUNK_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
+            const CHUNK_SIZE_THRESHOLD = 1 * 1024 * 1024; // 降低到1MB
             
-            if (file.size > CHUNK_SIZE_THRESHOLD && window.ChunkedUploader) {
-                console.log(`文件大小超过${formatSize(CHUNK_SIZE_THRESHOLD)}，使用分块上传`);
+            if (file.size > CHUNK_SIZE_THRESHOLD) {
+                console.log(`文件大小超过${formatSize(CHUNK_SIZE_THRESHOLD)}，需要分块上传`);
                 
-                // 创建分块上传实例
-                const uploader = new window.ChunkedUploader(file, {
-                    skipDeploy: skipDeploy,
-                    onProgress: (progress) => {
-                        // 分块上传器返回的是已上传的字节数
-                        updateProgress(progress.uploadedSize, file.size);
-                    },
-                    onComplete: (result) => {
-                        console.log('分块上传完成:', result);
-                        queueItem.status = 'completed';
-                        uploadedCount++;
-                        uploadedBytes += file.size;
-                        uploadedResults.push(result.data);
+                // 检查ChunkedUploader是否已加载
+                if (!window.ChunkedUploader) {
+                    console.log('ChunkedUploader未加载，尝试动态加载...');
+                    
+                    // 尝试动态加载ChunkedUploader
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = '/js/chunked-uploader.js';
+                        script.async = true;
+                        script.onload = () => {
+                            console.log('ChunkedUploader加载成功');
+                            resolve();
+                        };
+                        script.onerror = () => {
+                            console.error('ChunkedUploader加载失败');
+                            reject(new Error('无法加载分块上传模块'));
+                        };
+                        document.head.appendChild(script);
                         
-                        // 检查是否所有文件都处理完成
-                        checkAllFilesCompleted();
-                    },
-                    onError: (error) => {
-                        console.error('分块上传失败:', error);
-                        handleFileUploadError(queueItem, error);
-                    }
-                });
+                        // 设置超时，避免无限等待
+                        setTimeout(() => {
+                            reject(new Error('分块上传模块加载超时'));
+                        }, 10000); // 10秒超时
+                    });
+                }
                 
-                // 开始上传
-                uploader.start();
+                if (window.ChunkedUploader) {
+                    console.log(`使用分块上传方式`);
+                    
+                    // 创建分块上传实例
+                    const uploader = new window.ChunkedUploader(file, {
+                        skipDeploy: skipDeploy,
+                        onProgress: (progress) => {
+                            // 分块上传器返回的是已上传的字节数
+                            updateProgress(progress.uploadedSize, file.size);
+                        },
+                        onComplete: (result) => {
+                            console.log('分块上传完成:', result);
+                            queueItem.status = 'completed';
+                            uploadedCount++;
+                            uploadedBytes += file.size;
+                            uploadedResults.push(result.data);
+                            
+                            // 检查是否所有文件都处理完成
+                            checkAllFilesCompleted();
+                        },
+                        onError: (error) => {
+                            console.error('分块上传失败:', error);
+                            handleFileUploadError(queueItem, error);
+                        }
+                    });
+                    
+                    // 开始上传
+                    uploader.start();
+                } else {
+                    throw new Error('分块上传模块加载失败，无法上传大文件');
+                }
             } else {
                 console.log(`使用普通上传方式`);
                 
@@ -2776,6 +2808,22 @@ async function uploadSelectedFiles(files) {
         const { file, retries, maxRetries } = queueItem;
         
         console.error(`文件 ${file.name} 上传失败:`, error);
+        
+        // 特殊处理分块上传模块加载失败的情况
+        if (error.message && error.message.includes('分块上传模块')) {
+            queueItem.status = 'failed';
+            failedCount++;
+            failedFiles.push({
+                name: file.name,
+                error: `文件过大 (${formatSize(file.size)})，分块上传模块加载失败，请刷新页面后重试`
+            });
+            
+            console.log(`文件 ${file.name} 因分块上传模块问题而失败`);
+            
+            // 检查是否所有文件都处理完成
+            checkAllFilesCompleted();
+            return;
+        }
         
         // 检查重试次数
         if (retries < maxRetries) {
@@ -2812,11 +2860,11 @@ async function uploadSelectedFiles(files) {
                 // 有文件上传失败，显示部分成功的结果
                 if (uploadedCount > 0) {
                     showNotification(`上传完成: ${uploadedCount} 个文件成功, ${failedCount} 个文件失败`, 'warning');
-                } else {
+                    } else {
                     // 所有文件都失败了
                     showNotification(`所有文件上传失败 (${failedCount}/${totalFiles})`, 'error');
                 }
-            } else {
+                        } else {
                 // 所有文件都上传成功
                 showNotification('文件上传成功', 'success');
             }
