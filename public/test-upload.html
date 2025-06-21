@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传功能测试</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .test-info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-info h2 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        .test-info ul {
+            margin-left: 20px;
+        }
+        .test-info li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>上传功能测试</h1>
+        </header>
+        
+        <div class="test-info">
+            <h2>测试说明</h2>
+            <p>这个页面用于测试改进后的上传功能，主要改进包括：</p>
+            <ul>
+                <li><strong>并发上传</strong>：多个文件同时上传，单个文件失败不影响其他文件</li>
+                <li><strong>智能重试</strong>：失败的文件会自动重试，使用指数退避策略</li>
+                <li><strong>部分成功处理</strong>：当部分文件上传失败时，显示成功和失败的详细结果</li>
+                <li><strong>更好的错误处理</strong>：区分不同类型的错误，提供更准确的错误信息</li>
+                <li><strong>分块上传优化</strong>：单个分块失败不会导致整个文件上传失败</li>
+            </ul>
+            <p><strong>测试建议</strong>：尝试上传多个文件（10-20个），观察上传过程中的错误处理和部分成功情况。</p>
+        </div>
+
+        <div class="upload-container">
+            <div id="dropZone" class="drop-zone">
+                <div class="upload-content">
+                    <div class="upload-icon">📁</div>
+                    <button id="uploadBtn" class="upload-btn">选择文件</button>
+                    <p class="supported-formats">支持格式: JPG, PNG, GIF, WebP</p>
+                    <p class="file-size-limit">文件大小限制: 50MB</p>
+                </div>
+            </div>
+            
+            <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+            
+            <div class="upload-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="progress-info">
+                    <span class="progress-text">0%</span>
+                    <span class="progress-speed">0 KB/s</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-container" style="display: none;">
+            <div class="result-header">
+                <h3>上传结果</h3>
+                <button id="closeResult" class="close-btn">×</button>
+            </div>
+            <div class="result-content">
+                <!-- 结果内容将在这里动态生成 -->
+            </div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="js/chunked-uploader.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        // 添加一些测试用的调试信息
+        console.log('上传测试页面已加载');
+        
+        // 监听上传完成事件
+        document.addEventListener('uploadComplete', (e) => {
+            console.log('上传完成事件:', e.detail);
+        });
+        
+        // 监听上传错误事件
+        document.addEventListener('uploadError', (e) => {
+            console.log('上传错误事件:', e.detail);
+        });
+    </script>
+</body>
+</html> 
