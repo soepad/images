@@ -19,7 +19,7 @@ const originalConsole = {
 function setupConsoleHandling() {
     // 检查调试模式
     isDebugMode = localStorage.getItem('debugMode') === 'true' || 
-                  new URLSearchParams(window.location.search).has('debug');
+                        new URLSearchParams(window.location.search).has('debug');
     
     // 重写控制台方法
     console.log = function(...args) {
@@ -107,8 +107,8 @@ let imageGrid; // 定义全局变量，用于引用图片网格
 document.addEventListener('DOMContentLoaded', () => {
     try {
         // 设置控制台处理
-        setupConsoleHandling();
-        
+setupConsoleHandling();
+
         console.log('DOM加载完成，开始初始化');
         
         // 移动端设备优化
@@ -395,9 +395,9 @@ function initSettings() {
     
     if (!settingsForm) {
         console.error('未找到设置表单元素');
-        return;
-    }
-    
+                return;
+            }
+            
     try {
         // 尝试从API获取当前设置
         safeApiCall('/api/settings')
@@ -514,8 +514,8 @@ function initSettings() {
                 // 验证阈值
                 if (thresholdMB > 1000) {
                     showNotification('仓库大小阈值不能超过1GB', 'error');
-                    return;
-                }
+                return;
+            }
                 
                 if (thresholdMB > 900) {
                     const confirm = window.confirm('不建议将仓库大小阈值设置超过900MB，这可能导致GitHub仓库被警告。是否继续？');
@@ -662,8 +662,8 @@ function initSettings() {
                     errorMessage.textContent = '两次输入的新密码不一致';
                     document.getElementById('confirmPassword').parentNode.appendChild(errorMessage);
                     showNotification('两次输入的新密码不一致', 'error');
-                    return;
-                }
+                return;
+            }
                 
                 // 验证新密码长度
                 if (newPassword.length < 6) {
@@ -1042,8 +1042,8 @@ async function loadRepositories() {
     const container = document.getElementById('repoGrid');
     if (!container) {
         console.error('未找到仓库容器元素');
-        return;
-    }
+                return;
+            }
     
     try {
         console.log('开始加载仓库列表...');
@@ -1405,7 +1405,7 @@ function initBatchOperations() {
     // 批量复制下拉菜单
     batchCopyButton.addEventListener('click', function(e) {
         e.stopPropagation();
-        e.preventDefault();
+            e.preventDefault();
         
         // 如果当前按钮已经激活，则关闭菜单并返回
         if (batchCopyButton.classList.contains('active')) {
@@ -2169,13 +2169,13 @@ function createImageCard(image) {
     // 点击按钮显示下拉菜单
     dropdownToggle.addEventListener('click', function(e) {
         e.stopPropagation();
-        e.preventDefault();
+            e.preventDefault();
         
         // 如果当前按钮已经激活，则关闭菜单并返回
         if (dropdownToggle.classList.contains('active')) {
             closeAllDropdowns();
-            return;
-        }
+                return;
+            }
         
         // 先关闭所有已打开的下拉菜单
         closeAllDropdowns();
@@ -2466,9 +2466,9 @@ function initUploadModal() {
             fileInput: !!fileInput,
             closeBtn: !!closeBtn
         });
-        return;
-    }
-    
+                return;
+            }
+            
     // 关闭模态框
     closeBtn.addEventListener('click', (e) => {
         console.log('点击关闭按钮');
@@ -2561,66 +2561,66 @@ function initUploadModal() {
             }
         } else {
             console.log('上传模态框未显示，不处理粘贴事件');
-        }
-    });
-    
+            }
+        });
+
     console.log('上传模态框初始化完成');
-}
+    }
 
 // 处理上传文件
-function handleFiles(files) {
+    function handleFiles(files) {
     console.log('处理上传文件:', files.length, '个文件');
     const modal = document.getElementById('uploadModal');
     const modalBody = modal.querySelector('.modal-body');
     
     if (!files || files.length === 0) {
         console.warn('没有选择文件');
-        return;
-    }
-    
+            return;
+        }
+
     // 清除现有的文件列表和确认按钮
     const existingFileList = modalBody.querySelector('.file-list');
-    if (existingFileList) {
-        existingFileList.remove();
-    }
-    
+        if (existingFileList) {
+            existingFileList.remove();
+        }
+        
     const existingConfirmBtn = modalBody.querySelector('.confirm-upload-btn');
     if (existingConfirmBtn) {
         existingConfirmBtn.remove();
-    }
-    
-    // 创建文件列表容器
-    const fileList = document.createElement('div');
-    fileList.className = 'file-list';
-    
+        }
+
+        // 创建文件列表容器
+        const fileList = document.createElement('div');
+        fileList.className = 'file-list';
+        
     // 有效文件计数和数组
     let validFiles = [];
-    
-    // 显示每个文件的信息
+
+        // 显示每个文件的信息
     Array.from(files).forEach(file => {
         // 移除文件类型限制，允许上传任何类型的文件
         validFiles.push(file);
-        
-        const fileInfo = document.createElement('div');
-        fileInfo.className = 'file-info-container';
-        fileInfo.innerHTML = `
-            <div class="file-info">
-                <div class="file-name">${file.name}</div>
+
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info-container';
+            fileInfo.innerHTML = `
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
                 <div class="file-size">${formatFileSize(file.size, 2)}</div>
-            </div>
-        `;
-        fileList.appendChild(fileInfo);
-    });
+                </div>
+            `;
+            fileList.appendChild(fileInfo);
+        });
     
     if (validFiles.length === 0) {
         return;
     }
-    
-    // 添加确认上传按钮
-    const confirmUploadBtn = document.createElement('button');
-    confirmUploadBtn.className = 'confirm-upload-btn';
+
+        // 添加确认上传按钮
+        const confirmUploadBtn = document.createElement('button');
+        confirmUploadBtn.className = 'confirm-upload-btn';
     confirmUploadBtn.innerHTML = '<i class="fas fa-upload"></i> 确认上传';
-    confirmUploadBtn.addEventListener('click', () => {
+        confirmUploadBtn.addEventListener('click', () => {
         uploadSelectedFiles(validFiles);
     });
     
@@ -2649,7 +2649,7 @@ async function uploadSelectedFiles(files) {
         console.error('未找到上传相关元素');
         return;
     }
-    
+
     // 显示进度条
     uploadArea.style.display = 'none';
     progressBar.style.display = 'block';
@@ -2657,6 +2657,11 @@ async function uploadSelectedFiles(files) {
     let totalSize = 0;
     let uploadedBytes = 0;
     let startTime = Date.now();
+    let uploadedCount = 0;
+    let failedCount = 0;
+    const totalFiles = files.length;
+    const uploadedResults = [];
+    const failedFiles = [];
     
     // 计算总大小
     for (const file of files) {
@@ -2676,8 +2681,8 @@ async function uploadSelectedFiles(files) {
             overallProgress = completedContribution + (currentFileProgress * currentFileContribution);
         } else {
             // 普通上传：直接计算
-        const fileContribution = uploaded / totalSize;
-        const completedContribution = uploadedBytes / totalSize;
+            const fileContribution = uploaded / totalSize;
+            const completedContribution = uploadedBytes / totalSize;
             overallProgress = completedContribution + fileContribution;
         }
         
@@ -2692,8 +2697,24 @@ async function uploadSelectedFiles(files) {
         progressSpeed.textContent = `${formatSize(speed)}/s`;
     }
     
-    try {
-        for (const file of files) {
+    // 创建上传队列
+    const uploadQueue = Array.from(files).map((file, index) => ({
+        file,
+        index,
+        isLastFile: index === files.length - 1,
+        skipDeploy: index !== files.length - 1, // 除了最后一个文件，其他都跳过部署
+        status: 'pending', // pending, uploading, completed, failed
+        retries: 0,
+        maxRetries: 3
+    }));
+    
+    // 并发上传函数
+    async function uploadFileFromQueue(queueItem) {
+        const { file, index, isLastFile, skipDeploy } = queueItem;
+        
+        try {
+            console.log(`开始上传文件: ${file.name}, 大小: ${file.size}, 是否跳过部署: ${skipDeploy}`);
+            
             // 定义文件大小阈值，超过此值使用分块上传
             const CHUNK_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
             
@@ -2702,142 +2723,216 @@ async function uploadSelectedFiles(files) {
                 
                 // 创建分块上传实例
                 const uploader = new window.ChunkedUploader(file, {
+                    skipDeploy: skipDeploy,
                     onProgress: (progress) => {
                         // 分块上传器返回的是已上传的字节数
                         updateProgress(progress.uploadedSize, file.size);
                     },
                     onComplete: (result) => {
                         console.log('分块上传完成:', result);
+                        queueItem.status = 'completed';
+                        uploadedCount++;
                         uploadedBytes += file.size;
+                        uploadedResults.push(result.data);
+                        
+                        // 检查是否所有文件都处理完成
+                        checkAllFilesCompleted();
                     },
                     onError: (error) => {
                         console.error('分块上传失败:', error);
-                        throw error;
+                        handleFileUploadError(queueItem, error);
                     }
                 });
                 
                 // 开始上传
-                await uploader.start();
+                uploader.start();
             } else {
                 console.log(`使用普通上传方式`);
-                await uploadFileWithProgress(file, (loaded, total) => {
+                
+                const result = await uploadFileWithProgress(file, (loaded, total) => {
                     updateProgress(loaded);
-                });
-                uploadedBytes += file.size;
+                }, skipDeploy);
+                
+                if (result.success) {
+                    queueItem.status = 'completed';
+                    uploadedCount++;
+                    uploadedBytes += file.size;
+                    uploadedResults.push(result.data);
+                } else {
+                    throw new Error(result.error || '上传失败');
+                }
+                
+                // 检查是否所有文件都处理完成
+                checkAllFilesCompleted();
             }
+            
+        } catch (error) {
+            handleFileUploadError(queueItem, error);
         }
-        
-        // 上传完成后，更新仓库统计信息
-        const repoGrid = document.getElementById('repoGrid');
-        if (repoGrid) {
-            // 重新加载仓库列表以更新统计信息
-            await loadRepositories();
-        }
-        
-        // 更新仪表盘统计信息
-        await updateDashboardStats();
-        
-        // 如果当前在图片管理页面，重新加载图片列表
-        const imageGrid = document.getElementById('imageGrid');
-        if (imageGrid) {
-            await loadImages();
-        }
-        
-        showNotification('文件上传成功', 'success');
-        
-        // 关闭模态框
-        const modal = document.getElementById('uploadModal');
-        if (modal) {
-            modal.style.display = 'none';
-            resetUploadState(); // 重置上传状态
-        }
-    } catch (error) {
-        console.error('上传文件失败:', error);
-        showNotification('上传文件失败: ' + error.message, 'error');
-    } finally {
-        // 重置上传状态
-        uploadArea.style.display = 'block';
-        progressBar.style.display = 'none';
-        progressFill.style.width = '0%';
-        progressText.textContent = '0%';
-        progressSpeed.textContent = '0 KB/s';
     }
+    
+    // 处理文件上传错误
+    function handleFileUploadError(queueItem, error) {
+        const { file, retries, maxRetries } = queueItem;
+        
+        console.error(`文件 ${file.name} 上传失败:`, error);
+        
+        // 检查重试次数
+        if (retries < maxRetries) {
+            queueItem.retries++;
+            console.log(`文件 ${file.name} 上传失败，正在重试 (${retries}/${maxRetries})...`);
+            
+            // 延迟重试
+            setTimeout(() => {
+                uploadFileFromQueue(queueItem);
+            }, 1000 * retries); // 递增延迟
+        } else {
+            // 超过重试次数，标记为失败
+            queueItem.status = 'failed';
+            failedCount++;
+            failedFiles.push({
+                name: file.name,
+                error: error.message || '上传失败'
+            });
+            
+            console.log(`文件 ${file.name} 上传失败，超过最大重试次数`);
+            
+            // 检查是否所有文件都处理完成
+            checkAllFilesCompleted();
+        }
+    }
+    
+    // 检查所有文件是否都处理完成
+    function checkAllFilesCompleted() {
+        const totalProcessed = uploadedCount + failedCount;
+        
+        if (totalProcessed === totalFiles) {
+            // 所有文件都处理完成
+            if (failedCount > 0) {
+                // 有文件上传失败，显示部分成功的结果
+                if (uploadedCount > 0) {
+                    showNotification(`上传完成: ${uploadedCount} 个文件成功, ${failedCount} 个文件失败`, 'warning');
+                } else {
+                    // 所有文件都失败了
+                    showNotification(`所有文件上传失败 (${failedCount}/${totalFiles})`, 'error');
+                }
+            } else {
+                // 所有文件都上传成功
+                showNotification('文件上传成功', 'success');
+            }
+            
+            // 上传完成后，更新仓库统计信息
+            const repoGrid = document.getElementById('repoGrid');
+            if (repoGrid) {
+                // 重新加载仓库列表以更新统计信息
+                loadRepositories();
+            }
+            
+            // 更新仪表盘统计信息
+            updateDashboardStats();
+            
+            // 如果当前在图片管理页面，重新加载图片列表
+            const imageGrid = document.getElementById('imageGrid');
+            if (imageGrid) {
+                loadImages();
+            }
+            
+            // 关闭模态框
+            const modal = document.getElementById('uploadModal');
+            if (modal) {
+                modal.style.display = 'none';
+                resetUploadState(); // 重置上传状态
+            }
+            
+            // 重置上传状态
+            uploadArea.style.display = 'block';
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+            progressText.textContent = '0%';
+            progressSpeed.textContent = '0 KB/s';
+        }
+    }
+    
+    // 开始上传所有文件（并发）
+    uploadQueue.forEach(queueItem => {
+        uploadFileFromQueue(queueItem);
+    });
 }
 
 // 使用XMLHttpRequest上传文件并显示进度
 function uploadFileWithProgress(file, onProgress, skipDeploy = false) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('skipDeploy', skipDeploy ? 'true' : 'false');
-        
-        // 监听上传进度
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable && onProgress) {
-                onProgress(e.loaded, e.total);
-            }
-        });
-        
-        // 监听请求完成
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    resolve(response);
-                } catch (error) {
-                    reject(new Error('解析响应失败: ' + error.message));
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('skipDeploy', skipDeploy ? 'true' : 'false');
+            
+            // 监听上传进度
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && onProgress) {
+                    onProgress(e.loaded, e.total);
                 }
-            } else {
-                let errorMessage = '上传失败';
-                let errorDetails = '';
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    errorMessage = errorResponse.error || `服务器错误 (${xhr.status})`;
-                    errorDetails = errorResponse.details || '';
-                    
-                    // 处理特定类型的错误
-                    if (xhr.status === 409) {
-                        // 文件已存在冲突
-                        errorMessage = `文件 "${file.name}" 已存在，请重命名后重试`;
-                    } else if (xhr.status === 413) {
-                        // 文件太大
-                        errorMessage = '文件大小超过服务器限制';
-                    } else if (xhr.status === 403) {
-                        // 权限不足
-                        errorMessage = '您没有权限上传文件';
-                        if (errorResponse.error && errorResponse.error.includes('游客上传已禁用')) {
-                            errorMessage = '游客上传已禁用，请登录后再试';
-                        }
+            });
+            
+            // 监听请求完成
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response);
+                    } catch (error) {
+                        reject(new Error('解析响应失败: ' + error.message));
                     }
-                } catch (e) {
-                    errorMessage = `服务器错误 (${xhr.status})`;
+                } else {
+                    let errorMessage = '上传失败';
+                    let errorDetails = '';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || `服务器错误 (${xhr.status})`;
+                        errorDetails = errorResponse.details || '';
+                        
+                        // 处理特定类型的错误
+                        if (xhr.status === 409) {
+                            // 文件已存在冲突
+                        errorMessage = `文件 "${file.name}" 已存在，请重命名后重试`;
+                        } else if (xhr.status === 413) {
+                            // 文件太大
+                            errorMessage = '文件大小超过服务器限制';
+                        } else if (xhr.status === 403) {
+                            // 权限不足
+                            errorMessage = '您没有权限上传文件';
+                            if (errorResponse.error && errorResponse.error.includes('游客上传已禁用')) {
+                                errorMessage = '游客上传已禁用，请登录后再试';
+                            }
+                        }
+                    } catch (e) {
+                        errorMessage = `服务器错误 (${xhr.status})`;
+                    }
+                    
+                    const error = new Error(errorMessage);
+                    error.details = errorDetails;
+                    error.status = xhr.status;
+                    reject(error);
                 }
-                
-                const error = new Error(errorMessage);
-                error.details = errorDetails;
-                error.status = xhr.status;
+            });
+            
+            // 监听错误
+            xhr.addEventListener('error', () => {
+                const error = new Error('网络连接错误，请检查您的网络连接');
+                error.isNetworkError = true;
                 reject(error);
-            }
-        });
-        
-        // 监听错误
-        xhr.addEventListener('error', () => {
-            const error = new Error('网络连接错误，请检查您的网络连接');
-            error.isNetworkError = true;
-            reject(error);
-        });
-        
-        xhr.addEventListener('abort', () => {
-            reject(new Error('上传已取消'));
-        });
-        
+            });
+            
+            xhr.addEventListener('abort', () => {
+                reject(new Error('上传已取消'));
+            });
+            
         // 发送请求 - 使用查询参数
-        xhr.open('POST', '/api/upload?action=upload', true);
+            xhr.open('POST', '/api/upload?action=upload', true);
         xhr.withCredentials = true; // 包含凭据
-        xhr.send(formData);
-    });
-}
+            xhr.send(formData);
+        });
+    }
 
 // 使用分块上传处理大文件
 function uploadLargeFileWithChunks(file, onProgress, skipDeploy = false) {
@@ -3079,9 +3174,9 @@ async function createRepository() {
     const baseName = document.getElementById('baseRepoName').value.trim();
     if (!baseName) {
         showNotification('请输入基础仓库名称', 'error');
-        return;
-    }
-    
+            return;
+        }
+        
     try {
         const response = await safeApiCall('/api/repositories/create', {
             method: 'POST',
@@ -3566,8 +3661,8 @@ async function loadFolders(page = 1, search = '') {
                 <div class="loading-indicator">
                     <i class="fas fa-spinner fa-spin"></i>
                     <span>正在加载文件夹列表...</span>
-                </div>
-            `;
+            </div>
+        `;
         }
         
         // 构建API URL
@@ -3616,8 +3711,8 @@ async function loadFolders(page = 1, search = '') {
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>加载文件夹列表失败</p>
                     <button class="btn btn-primary" onclick="loadFolders()">重试</button>
-                </div>
-            `;
+            </div>
+        `;
         }
         
         showNotification('加载文件夹列表失败: ' + error.message, 'error');
@@ -3730,8 +3825,8 @@ function displayFolderContents(folder, files) {
             <span class="file-col file-col-size">大小</span>
             <span class="file-col file-col-repo">仓库</span>
             <span class="file-col file-col-actions">操作</span>
-        </div>
-    `;
+            </div>
+        `;
     // 文件列表内容
     const filesList = files.length > 0 ? 
         fileTableHeader +
@@ -4050,7 +4145,7 @@ function showRenameFolderModal(folder) {
         const input = document.getElementById('newFolderName');
         if (input) {
             input.focus();
-            input.select();
+        input.select();
         }
     }, 100);
     
@@ -4185,7 +4280,7 @@ function showDeleteFolderModal(folder) {
         // 添加回车键支持
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && input.value === folder.name) {
-                e.preventDefault();
+            e.preventDefault();
                 confirmDeleteFolder(folder.id);
             }
         });
@@ -4223,7 +4318,7 @@ async function confirmDeleteFolder(folderId) {
             await loadFolders();
             // 刷新控制面板统计
             await updateDashboardStats();
-        } else {
+    } else {
             throw new Error(response.error || '删除文件夹失败');
         }
     } catch (error) {
