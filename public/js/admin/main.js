@@ -64,6 +64,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const toast = document.getElementById('toast');
     const uploadContainer = document.querySelector('.upload-container');
 
+    // 如果页面上没有上传相关元素，则不执行任何操作
+    if (!dropZone || !fileInput || !uploadBtn) {
+        console.log('当前页面不是上传页面，跳过上传功能初始化。');
+        return;
+    }
+
     // 存储待上传的文件
     let pendingFiles = [];
     // 活跃的上传器列表
@@ -767,6 +773,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 禁用上传功能
     function disableUpload() {
+        if (!uploadBtn || !dropZone || !fileInput) return;
+
         // 禁用上传按钮
         uploadBtn.disabled = true;
         uploadBtn.classList.add('disabled');
@@ -823,21 +831,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 初始化
     // 首先检查游客上传权限，然后再允许用户操作
-    const canUpload = await checkGuestUpload();
-    console.log('游客上传权限检查结果:', canUpload);
-    
-    // 只有在允许上传时才初始化上传功能
-    if (canUpload) {
-        initUpload();
-    } else {
-        // 如果禁止上传，直接禁用上传功能
-        disableUpload();
+    async function initializeUpload() {
+        if (!dropZone || !fileInput || !uploadBtn) return;
+        const canUpload = await checkGuestUpload();
+        console.log('游客上传权限检查结果:', canUpload);
+        
+        // 只有在允许上传时才初始化上传功能
+        if (canUpload) {
+            initUpload();
+        } else {
+            // 如果禁止上传，直接禁用上传功能
+            disableUpload();
+        }
     }
+    
+    initializeUpload();
 
     // 显示部分成功的结果
     function showPartialResult(successResults, failedFiles) {
         const resultContainer = document.querySelector('.result-container');
-        const resultContent = document.querySelector('.result-content');
+        if (!resultContainer) return;
+
+        const resultContent = resultContainer.querySelector('.result-content');
+        if (!resultContent) return;
         
         let html = '<div class="upload-summary">';
         html += `<h3>上传完成 (${successResults.length} 成功, ${failedFiles.length} 失败)</h3>`;
@@ -879,7 +895,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 隐藏进度条
         const uploadProgress = document.querySelector('.upload-progress');
-        uploadProgress.style.display = 'none';
+        if (uploadProgress) {
+            uploadProgress.style.display = 'none';
+        }
         
         // 重置上传区域
         resetUploadArea();
